@@ -34,6 +34,7 @@ export default function Footer() {
               </Link>
             ))}
             <Link to="/products">Full range</Link>
+            <Link to="/catalogue">Catalogue (PDF)</Link>
           </nav>
 
           <nav className="ftr-col" aria-label="Company">
@@ -75,6 +76,13 @@ export default function Footer() {
             © {new Date().getFullYear()} {BUSINESS.legalName}. All rights reserved.
           </span>
           <span>Made in Vapi, Gujarat 🇮🇳</span>
+          <button
+            type="button"
+            className="ftr-top-btn"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            Back to top ↑
+          </button>
         </div>
       </div>
     </footer>

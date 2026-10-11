@@ -5,16 +5,17 @@ import Reveal from '../components/Reveal';
 import NotebookArt from '../components/NotebookArt';
 import { BUSINESS, bySlug } from '../data/site';
 import type { Product } from '../data/site';
-import { ArrowRight, Check, Whatsapp, Plus } from '../components/Icons';
+import { ArrowRight, Check, Whatsapp, Plus, Book, Factory, Tag, Palette, Truck, Shield } from '../components/Icons';
+import { PRICE_CATEGORIES } from '../data/priceList';
 
 /** Cover palettes a customer can preview live. */
 const THEMES = [
-  { id: 'green', label: 'School green', art: { cover: '#0b7a3e', accent: '#fba600', band: '#064f28' } },
+  { id: 'green', label: 'School green', art: { cover: '#0b7a3e', accent: '#f29f00', band: '#064f28' } },
   { id: 'saffron', label: 'Festive saffron', art: { cover: '#c2410c', accent: '#fff4dd', band: '#8f2f08' } },
   { id: 'emerald', label: 'Campus emerald', art: { cover: '#0e7c7b', accent: '#ffe1a5', band: '#08504f' } },
-  { id: 'plum', label: 'Deep plum', art: { cover: '#3c2a63', accent: '#fba600', band: '#261a42' } },
+  { id: 'plum', label: 'Deep plum', art: { cover: '#3c2a63', accent: '#f29f00', band: '#261a42' } },
   { id: 'crimson', label: 'Sports crimson', art: { cover: '#9f1239', accent: '#ffe1a5', band: '#6b0c27' } },
-  { id: 'slate', label: 'Corporate slate', art: { cover: '#334155', accent: '#fba600', band: '#1e293b' } },
+  { id: 'slate', label: 'Corporate slate', art: { cover: '#334155', accent: '#f29f00', band: '#1e293b' } },
 ];
 
 const OPTIONS = [
@@ -51,8 +52,47 @@ const FINISHES = [
   { t: 'Rounded corners', d: 'Keeps covers from dog-earing in a schoolbag through the year.' },
 ];
 
+/** Who orders custom and bulk books — after Prime Paper's "Here's how we can help" row. */
+const SEGMENTS = [
+  { icon: <Book />, t: 'Schools & colleges', d: 'Class-wise notebooks, practical and scrap books, answer sheets and board supplements with your institution name.' },
+  { icon: <Shield />, t: 'Corporates & offices', d: 'Registers, diaries and notebooks carrying your logo — for staff, conferences and client gifting.' },
+  { icon: <Tag />, t: 'Private label & traders', d: 'Your own brand on our books — cover artwork, title and back-panel details printed under your name.' },
+  { icon: <Palette />, t: 'Parties, events & campaigns', d: 'Symbol, slogan and sponsor branding on covers, produced fast when campaign timelines are tight.' },
+  { icon: <Factory />, t: 'NGOs & social causes', d: 'Affordable books in bulk for distribution drives, with your organisation’s name on the cover.' },
+  { icon: <Truck />, t: 'Shops & distributors', d: 'Firm name and contact on the back cover of every book you sell — advertising that travels home with the customer.' },
+];
+
+/** What a customer can change on a custom run — Prime lists brand, paper, binding and size. */
+const CUSTOM_FIELDS = ['Cover name & logo', 'Paper GSM & page count', 'Binding (stitched / spiral / case)', 'Book size', 'Inner page printing', 'Custom packing'];
+const ORG_TYPES = ['School / college', 'Corporate / office', 'Private label / trader', 'Party / event / campaign', 'NGO / social cause', 'Shop / distributor', 'Other'];
+
 export default function Customisation() {
   const [theme, setTheme] = useState(THEMES[0]);
+  const [form, setForm] = useState({ name: '', phone: '', city: '', org: '', product: '', qty: '', by: '', message: '' });
+  const [customise, setCustomise] = useState<string[]>(['Cover name & logo']);
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+  const toggleCustom = (c: string) => setCustomise((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+
+  /** No server behind the site — the requirement is composed into a WhatsApp message. */
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const lines = [
+      'Custom / bulk notebook enquiry from the website',
+      '',
+      `Name: ${form.name}`,
+      `Phone: ${form.phone}`,
+      form.city && `City: ${form.city}`,
+      form.org && `Organisation: ${form.org}`,
+      form.product && `Product: ${form.product}`,
+      form.qty && `Quantity: ${form.qty}`,
+      form.by && `Needed by: ${form.by}`,
+      customise.length > 0 && `Customise: ${customise.join(', ')}`,
+      form.message && '',
+      form.message && form.message,
+    ].filter(Boolean);
+    window.open(`${BUSINESS.whatsapp}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
+  };
 
   // Preview product: a long book wearing the selected cover palette
   const base = bySlug('long-note-book');
@@ -67,6 +107,34 @@ export default function Customisation() {
         title="Your brand, printed on every cover"
         lede="Front cover customisation and exam-paper printing are done in-house — artwork setup, digital proof, print and binding all under one roof, with no third-party press in the middle."
       />
+
+      {/* Who we make custom books for */}
+      <section className="section section--tight">
+        <div className="container">
+          <div className="head head--center">
+            <Reveal><span className="eyebrow">Here’s how we can help</span></Reveal>
+            <Reveal delay={90}><h2>Custom and bulk books for every kind of buyer</h2></Reveal>
+          </div>
+          <div className="segments">
+            {SEGMENTS.map((sg, i) => (
+              <Reveal key={sg.t} delay={(i % 3) * 80}>
+                <article className="segment">
+                  <span className="pillar-ico">{sg.icon}</span>
+                  <div>
+                    <h3>{sg.t}</h3>
+                    <p>{sg.d}</p>
+                  </div>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal delay={120}>
+            <div className="center" style={{ marginTop: 30 }}>
+              <a href="#bulk-enquiry" className="btn btn--primary">Send your requirement <ArrowRight /></a>
+            </div>
+          </Reveal>
+        </div>
+      </section>
 
       {/* Live cover preview */}
       <section className="section section--paper">
@@ -221,9 +289,9 @@ export default function Customisation() {
               </ul>
             </Reveal>
             <Reveal delay={280}>
-              <Link to="/contact" className="btn btn--primary">
+              <a href="#bulk-enquiry" className="btn btn--primary">
                 Start a customised order <ArrowRight />
-              </Link>
+              </a>
             </Reveal>
           </div>
 
@@ -245,6 +313,79 @@ export default function Customisation() {
               ))}
             </div>
           </Reveal>
+        </div>
+      </section>
+
+      {/* Custom / bulk enquiry */}
+      <section className="section bulk" id="bulk-enquiry">
+        <div className="container contact-grid">
+          <Reveal anim="left">
+            <form className="cform" onSubmit={submit}>
+              <div>
+                <span className="eyebrow">Custom / bulk enquiry</span>
+                <h2 className="bulk-title">Tell us what you need</h2>
+                <p className="cform-note">We reply with a rate, MOQ and a proof timeline — usually the same working day.</p>
+              </div>
+              <div className="frow">
+                <label className="field"><span>Your name *</span><input required value={form.name} onChange={set('name')} autoComplete="name" /></label>
+                <label className="field"><span>Phone *</span><input required type="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" /></label>
+              </div>
+              <div className="frow">
+                <label className="field"><span>City *</span><input required value={form.city} onChange={set('city')} autoComplete="address-level2" /></label>
+                <label className="field">
+                  <span>You are a</span>
+                  <select value={form.org} onChange={set('org')}>
+                    <option value="">Select…</option>
+                    {ORG_TYPES.map((o) => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="frow">
+                <label className="field">
+                  <span>Product</span>
+                  <select value={form.product} onChange={set('product')}>
+                    <option value="">Select…</option>
+                    {PRICE_CATEGORIES.map((c) => <option key={c.id}>{c.label}</option>)}
+                    <option>Not sure yet</option>
+                  </select>
+                </label>
+                <label className="field"><span>Approx. quantity</span><input value={form.qty} onChange={set('qty')} placeholder="e.g. 5,000 books" /></label>
+              </div>
+              <fieldset className="bulk-options">
+                <legend>What should we customise?</legend>
+                {CUSTOM_FIELDS.map((c) => (
+                  <label key={c} className={`bulk-option ${customise.includes(c) ? 'is-on' : ''}`}>
+                    <input type="checkbox" checked={customise.includes(c)} onChange={() => toggleCustom(c)} />
+                    {c}
+                  </label>
+                ))}
+              </fieldset>
+              <label className="field"><span>Needed by</span><input type="date" value={form.by} onChange={set('by')} /></label>
+              <label className="field"><span>Requirement details</span><textarea rows={4} value={form.message} onChange={set('message')} placeholder="Sizes, page counts, ruling, artwork you have, delivery city…" /></label>
+              <button type="submit" className="btn btn--primary btn--block"><Whatsapp size={17} /> Send requirement on WhatsApp</button>
+              <p className="cform-alt">Prefer to talk? Call <a href={BUSINESS.phoneHref}>{BUSINESS.phone}</a></p>
+            </form>
+          </Reveal>
+
+          <div className="cside">
+            <Reveal anim="right">
+              <div className="ccard">
+                <h3>The Jakharia advantage</h3>
+                <ul className="ticklist">
+                  {['Mill-direct rates on every custom run', 'Ruling, printing and binding in our own unit', 'Digital proof before anything is printed', 'Artwork kept on file for next season’s re-order'].map((t) => (
+                    <li key={t}><Check size={17} /> {t}</li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+            <Reveal anim="right" delay={90}>
+              <div className="ccard">
+                <h3>Want standard books instead?</h3>
+                <p>Every stock line is in the shop with live wholesale rates.</p>
+                <Link to="/products" className="tlink">Shop all products <ArrowRight size={16} /></Link>
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
     </>

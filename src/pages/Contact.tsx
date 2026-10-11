@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PageHead from '../components/PageHead';
 import Reveal from '../components/Reveal';
-import { BUSINESS, PRODUCTS } from '../data/site';
+import { BUSINESS, PRODUCTS, bySlug } from '../data/site';
 import { Phone, Mail, Pin, Whatsapp, ArrowRight, Check } from '../components/Icons';
 
 const FAQS = [
@@ -34,6 +34,7 @@ export default function Contact() {
   const [form, setForm] = useState({
     name: '',
     firm: '',
+    businessType: '',
     city: '',
     phone: '',
     product: '',
@@ -55,6 +56,7 @@ export default function Contact() {
       '',
       `Name: ${form.name}`,
       form.firm && `Firm: ${form.firm}`,
+      form.businessType && `Business type: ${form.businessType}`,
       form.city && `City: ${form.city}`,
       `Phone: ${form.phone}`,
       form.product && `Product: ${form.product}`,
@@ -73,6 +75,27 @@ export default function Contact() {
         title="Become a Jakharia distributor"
         lede="Tell us what you sell and how much of it. We will come back with a slab-wise rate, MOQ and a realistic dispatch date — usually the same day."
       />
+
+      <section className="section section--tight partner-audience" style={{ '--partner-image': `url(${bySlug('long-premium-book')?.photo ?? ''})` } as React.CSSProperties}>
+        <div className="container">
+          <div className="head head--center">
+            <span className="eyebrow">Who we work with</span>
+            <h2>A direct manufacturing partner for your business</h2>
+            <p className="lede">Tell us how you serve your market so we can shape the right product mix and quote.</p>
+          </div>
+          <div className="partner-audience-grid">
+            {[
+              ['Retailers', 'Build a dependable shelf range for your local customers.'],
+              ['Wholesalers', 'Source multiple paper stationery lines from one manufacturer.'],
+              ['Distributors', 'Discuss territory, seasonal demand and a suitable product mix.'],
+            ].map(([title, body], i) => (
+              <article className="partner-audience-card" key={title}>
+                <span>0{i + 1}</span><h3>{title}</h3><p>{body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <section className="section section--paper">
         <div className="container contact-grid">
@@ -109,6 +132,20 @@ export default function Contact() {
                     placeholder="10-digit mobile"
                   />
                 </label>
+                <label className="field">
+                  <span>Business type</span>
+                  <select value={form.businessType} onChange={set('businessType')}>
+                    <option value="">Select your business</option>
+                    <option>Retailer</option>
+                    <option>Wholesaler</option>
+                    <option>Distributor</option>
+                    <option>School / institution</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="frow">
                 <label className="field">
                   <span>City</span>
                   <input value={form.city} onChange={set('city')} placeholder="City / district" />

@@ -2,11 +2,12 @@ import { Link } from 'react-router-dom';
 import NotebookArt from './NotebookArt';
 import Reveal from './Reveal';
 import { bySlug } from '../data/site';
+import { PRICE_CATEGORIES } from '../data/priceList';
 import { ArrowRight } from './Icons';
 
 /**
  * Big-word category tiles on tinted cards — the clearest wayfinding pattern on
- * the Sundaram store, rebuilt in the green/gold palette.
+ * the reference stationery stores, rebuilt in Jakharia's navy and yellow.
  */
 const TILES = [
   { label: 'Exercise', c: 'exercise', slug: 'a4-exercise-book', tint: 'green', note: 'A4 & A5 books' },
@@ -46,6 +47,20 @@ export default function CategoryTiles() {
             </Reveal>
           ))}
         </div>
+
+        {/* Every range in the price list, after Sundaram's long product-range index */}
+        <Reveal delay={120}>
+          <div className="range-index">
+            <span className="range-index-label">All {PRICE_CATEGORIES.length} ranges in our price list</span>
+            <div className="range-chips">
+              {PRICE_CATEGORIES.map((r) => (
+                <Link key={r.id} to={`/products?range=${r.id}`} className="range-chip">
+                  {r.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );

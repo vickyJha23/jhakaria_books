@@ -37,9 +37,7 @@ export default function ProductCard({ product, detailed = false }: Props) {
   return (
     <article className={`pcard ${detailed ? 'pcard--detailed' : ''}`}>
       <div className="pcard-stage" ref={stage} onMouseMove={onMove} onMouseLeave={reset}>
-        {product.brand && <span className="pbadge">{product.brand}</span>}
-
-        <NotebookArt product={product} back={back} height={detailed ? 250 : 215} />
+        <NotebookArt product={product} back={back} height={detailed ? 260 : 235} />
 
         {hasBack && (
           <button
@@ -54,6 +52,12 @@ export default function ProductCard({ product, detailed = false }: Props) {
       </div>
 
       <div className="pcard-body">
+        {product.brand && (
+          <div className="pcard-meta">
+            <span className="pbadge">{product.brand}</span>
+            <span className="pcard-meta-label">Jakharia Books</span>
+          </div>
+        )}
         <h3>{product.name}</h3>
         <p className="pcard-pages">{product.pages}</p>
         <p className="pcard-blurb">{product.blurb}</p>

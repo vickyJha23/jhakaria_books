@@ -7,10 +7,10 @@ import Logo from './Logo';
 
 const NAV = [
   { to: '/', label: 'Home' },
-  { to: '/products', label: 'Products' },
-  { to: '/customisation', label: 'Customisation' },
+  { to: '/products', label: 'Shop all' },
+  { to: '/contact', label: 'Distributors' },
+  { to: '/customisation', label: 'Bulk orders' },
   { to: '/about', label: 'About' },
-  { to: '/contact', label: 'Contact' },
 ];
 
 export default function Header() {

@@ -1,21 +1,27 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ContactRail from './components/ContactRail';
-import Home from './pages/Home';
-import Products from './pages/Products';
-import Customisation from './pages/Customisation';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import NotFound from './pages/NotFound';
+import OrderProvider from './components/OrderProvider';
+import OrderCart from './components/OrderCart';
 import './styles/components.css';
 import './styles/pages.css';
 
+const Home = lazy(() => import('./pages/Home'));
+const Products = lazy(() => import('./pages/Products'));
+const ProductDetail = lazy(() => import('./pages/ProductDetail'));
+const Catalogue = lazy(() => import('./pages/Catalogue'));
+const Customisation = lazy(() => import('./pages/Customisation'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
 const TITLES: Record<string, string> = {
   '/': 'Jakharia Books — Notebook manufacturers in Vapi',
-  '/products': 'Products — Jakharia Books',
-  '/customisation': 'Cover & exam-paper customisation — Jakharia Books',
+  '/products': 'Shop all — wholesale price list — Jakharia Books',
+  '/customisation': 'Custom & bulk notebook orders — Jakharia Books',
+  '/catalogue': 'Wholesale catalogue 2026–27 — Jakharia Books',
   '/about': 'About us — Jakharia Books',
   '/contact': 'Become a distributor — Jakharia Books',
 };
@@ -44,24 +50,29 @@ export default function App() {
   const { pathname } = useLocation();
 
   return (
-    <>
+    <OrderProvider>
       <a className="skip" href="#main">
         Skip to content
       </a>
       <RouteEffects />
       <Header />
       <main id="main" key={pathname} className="page-enter">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/customisation" element={<Customisation />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<div className="route-loading" role="status"><span>JB</span> Opening the collection…</div>}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/products/:id" element={<ProductDetail />} />
+            <Route path="/catalogue" element={<Catalogue />} />
+            <Route path="/customisation" element={<Customisation />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
       <ContactRail />
-    </>
+      <OrderCart />
+    </OrderProvider>
   );
 }

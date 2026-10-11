@@ -391,10 +391,3 @@ export const bySlug = (slug: string): Product =>
   PRODUCTS.find((p) => p.slug === slug) ?? PRODUCTS[0];
 
 export const FEATURED = PRODUCTS.filter((p) => p.featured);
-
-/** Every photograph we hold, for the range gallery. */
-export const GALLERY = PRODUCTS.flatMap((p) =>
-  [p.photo, p.photoBack]
-    .filter((src): src is string => Boolean(src))
-    .map((src) => ({ src, name: p.name })),
-);
