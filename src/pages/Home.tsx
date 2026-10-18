@@ -108,6 +108,12 @@ export default function Home() {
     <>
       {/* ---------------- Hero ---------------- */}
       <section className="hero ruled-fade" ref={page}>
+        {/* Slow loop of our own covers drifting upward, rendered from the product photos */}
+        <div className="hero-video" aria-hidden>
+          <video autoPlay muted loop playsInline preload="metadata" poster="/videos/hero-poster.jpg">
+            <source src="/videos/hero.mp4" type="video/mp4" />
+          </video>
+        </div>
         <div className="hero-glow" aria-hidden />
         <div className="container hero-in">
           <div className="hero-copy">
