@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import PageHead from '../components/PageHead';
 import Reveal from '../components/Reveal';
 import { BUSINESS, PRODUCTS, bySlug } from '../data/site';
@@ -244,17 +245,12 @@ export default function Contact() {
               <div className="ccard ccard--wa">
                 <h3>See the full range first</h3>
                 <p>
-                  Our complete catalogue with current products sits on WhatsApp — browse it, then
-                  send us the item codes you want rates for.
+                  Browse every product, size and printed MRP in our catalogue — then send us the
+                  items you want wholesale rates for.
                 </p>
-                <a
-                  href={BUSINESS.catalog}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn--wa btn--block"
-                >
-                  <Whatsapp size={17} /> Open catalogue
-                </a>
+                <Link to="/catalogue" className="btn btn--wa btn--block">
+                  Open catalogue <ArrowRight size={16} />
+                </Link>
               </div>
             </Reveal>
 

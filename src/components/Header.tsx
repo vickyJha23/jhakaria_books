@@ -95,14 +95,9 @@ export default function Header() {
             <a href={BUSINESS.phoneHref} className="btn btn--ghost btn--block">
               <Phone size={16} /> {BUSINESS.phone}
             </a>
-            <a
-              href={BUSINESS.catalog}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn--primary btn--block"
-            >
+            <Link to="/catalogue" className="btn btn--primary btn--block">
               View catalogue
-            </a>
+            </Link>
           </div>
         </div>
       </div>
