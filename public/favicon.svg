@@ -2,12 +2,12 @@
   <defs>
     <clipPath id="c"><rect x="22" y="9" width="56" height="72" rx="9"/></clipPath>
   </defs>
-  <rect width="100" height="100" rx="20" fill="#0b7a3e"/>
+  <rect width="100" height="100" rx="24" fill="#28256a"/>
   <rect x="22" y="9" width="56" height="72" rx="9" fill="#ffffff"/>
-  <g clip-path="url(#c)" fill="none" stroke="#0b7a3e" stroke-width="6.5">
+  <g clip-path="url(#c)" fill="none" stroke="#28256a" stroke-width="6.5">
     <path d="M67 5v45q0 11-11 11H18"/>
     <path d="M55.5 5v33q0 11-11 11H18"/>
     <path d="M44 5v21q0 11-11 11H18"/>
   </g>
-  <path d="M39 26c-4.7-.8-7-3.1-7.8-7.8-.8 4.7-3.1 7-7.8 7.8 4.7.8 7 3.1 7.8 7.8.8-4.7 3.1-7 7.8-7.8z" fill="#fba600"/>
+  <path d="M39 26c-4.7-.8-7-3.1-7.8-7.8-.8 4.7-3.1 7-7.8 7.8 4.7.8 7 3.1 7.8 7.8.8-4.7 3.1-7 7.8-7.8z" fill="#f29f00"/>
 </svg>
