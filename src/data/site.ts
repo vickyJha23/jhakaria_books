@@ -30,6 +30,7 @@ export const BUSINESS = {
   legalName: 'Jakharia Book Mfg. Co.',
   shortName: 'Jakharia',
   tagline: 'Quality Speaks Itself',
+  established: 1987,
   city: 'Vapi',
   state: 'Gujarat',
   phone: '+91 98675 14843',
@@ -38,6 +39,9 @@ export const BUSINESS = {
   catalog: 'https://wa.me/c/919867514843',
   email: 'sales@jakhariabooks.in',
 } as const;
+
+/** Whole years in business, so the copy never needs a yearly edit. */
+export const YEARS_IN_BUSINESS = new Date().getFullYear() - BUSINESS.established;
 
 /** Sub-brands printed on the covers. */
 export const BRANDS = ['A-Class', 'Galaxy', 'Classic', 'Kids', 'Star', 'Real', 'Akshar'] as const;

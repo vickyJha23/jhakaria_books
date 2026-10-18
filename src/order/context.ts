@@ -9,7 +9,6 @@ export interface ResolvedLine { line: CartLine; item: PriceItem; variant: PriceV
 
 export interface OrderApi {
   lines: ResolvedLine[];
-  subtotal: number;
   totalPieces: number;
   add: (item: PriceItem, variant: PriceVariant, pack: PackId, quantity?: number) => void;
   change: (line: CartLine, delta: number) => void;

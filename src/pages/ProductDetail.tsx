@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import NotebookArt from '../components/NotebookArt';
 import { BUSINESS } from '../data/site';
 import { PRICE_ITEMS, priceCategoryLabel, type PriceItem } from '../data/priceList';
-import { artFor, brandOf, defaultPack, gsmOf, marginOf, packsFor, pagesOf, type PackId } from '../data/shop';
+import { artFor, brandOf, defaultPack, gsmOf, minMrp, mrpPer, mrpText, packsFor, pagesOf, type PackId } from '../data/shop';
 import { currency, useOrder } from '../order/context';
 import { ArrowRight, Check, Whatsapp } from '../components/Icons';
 
@@ -24,7 +24,7 @@ export default function ProductDetail() {
   const item = PRICE_ITEMS.find((entry) => entry.id === id);
 
   useEffect(() => {
-    if (item) document.title = `${item.name} — wholesale rates — Jakharia Books`;
+    if (item) document.title = `${item.name} — Jakharia Books`;
   }, [item]);
 
   if (!item) {
@@ -54,10 +54,8 @@ function ProductView({ item }: { item: PriceItem }) {
   const pack = packs.find((p) => p.id === packId) ?? packs[0];
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const margin = marginOf(item, variant);
   const gsm = gsmOf(item);
   const brand = brandOf(item);
-  const gstIncluded = item.note?.includes('GST inclusive');
   const unit = item.unit === 'packet' ? 'packet' : item.unit === 'register' ? 'register' : 'piece';
   const related = PRICE_ITEMS.filter((p) => p.category === item.category && p.id !== item.id);
   const more = related.length < 4
@@ -70,7 +68,7 @@ function ProductView({ item }: { item: PriceItem }) {
     return () => window.clearTimeout(timer);
   }, [added]);
 
-  const ask = `Hello ${BUSINESS.name}, I'd like to know more about ${item.name} (${variant.option}). Listed rate ${currency(variant.rate)} / ${unit}.`;
+  const ask = `Hello ${BUSINESS.name}, I'd like to know more about ${item.name} (${variant.option}). ${mrpText(item, variant)}. Please share your wholesale rate.`;
   const share = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -95,7 +93,6 @@ function ProductView({ item }: { item: PriceItem }) {
               <div className="pdp-stage">
                 <NotebookArt product={art} back={side === 'back'} height="min(400px, 70vw)" eager />
                 <span className="ptile-brand">{brand}</span>
-                {gstIncluded && <span className="ptile-flag">GST incl.</span>}
               </div>
               {art.photoBack && (
                 <div className="pdp-thumbs" role="group" aria-label="Cover side">
@@ -116,10 +113,10 @@ function ProductView({ item }: { item: PriceItem }) {
               <p className="pdp-summary">{summaryOf(item)}</p>
 
               <div className="pdp-price">
-                <strong>{currency(variant.rate)}</strong>
-                <small>/ {unit}</small>
-                {variant.mrp !== undefined && <s>MRP {currency(variant.mrp)}</s>}
-                {margin !== undefined && <span className="ptile-margin">{margin}% retail margin</span>}
+                {variant.mrp !== undefined
+                  ? <><small>MRP</small><strong>{currency(variant.mrp)}</strong>{mrpPer(item) && <small>/ {mrpPer(item)}</small>}</>
+                  : <strong className="pdp-ask">MRP on request</strong>}
+                <span className="pdp-wholesale">Wholesale rates shared on WhatsApp</span>
               </div>
 
               <div className="pdp-block">
@@ -135,20 +132,18 @@ function ProductView({ item }: { item: PriceItem }) {
               </div>
 
               <dl className="pdp-specs">
-                {variant.dozenRate !== undefined && <div><dt>Rate / dozen</dt><dd>{currency(variant.dozenRate)}</dd></div>}
                 {variant.size && <div><dt>Size (±2%)</dt><dd>{variant.size}</dd></div>}
                 {variant.bundle !== undefined && <div><dt>Bundle</dt><dd>{variant.bundle} {variant.dozenRate !== undefined ? 'dozen' : item.unit === 'packet' ? 'packets' : 'pieces'}</dd></div>}
                 {variant.colour && <div><dt>Cover</dt><dd>{variant.colour}</dd></div>}
                 {variant.pack && <div><dt>Pack</dt><dd>{variant.pack}</dd></div>}
                 <div><dt>Brand</dt><dd>{brand}</dd></div>
               </dl>
-              {item.note && <p className="ptile-note">{item.note}</p>}
 
               <div className="pdp-buy">
                 <label className="pdp-label" htmlFor="pdp-pack">Order by</label>
                 <div className="pdp-buy-row">
                   <select id="pdp-pack" value={pack.id} onChange={(e) => setPackId(e.target.value as PackId)}>
-                    {packs.map((p) => <option key={p.id} value={p.id}>{p.label} · {currency(p.price)}</option>)}
+                    {packs.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
                   <div className="ptile-qty">
                     <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
@@ -156,7 +151,7 @@ function ProductView({ item }: { item: PriceItem }) {
                     <button type="button" onClick={() => setQuantity((q) => q + 1)} aria-label="Increase quantity">+</button>
                   </div>
                 </div>
-                <p className="pdp-total">{quantity} × {pack.label} = <strong>{currency(pack.price * quantity)}</strong> · {(pack.pieces * quantity).toLocaleString('en-IN')} {unit}s</p>
+                <p className="pdp-total">{quantity} × {pack.label} = <strong>{(pack.pieces * quantity).toLocaleString('en-IN')} {unit}s</strong></p>
                 <div className="pdp-actions">
                   <button type="button" className={`btn btn--primary ${added ? 'is-added' : ''}`} onClick={() => { add(item, variant, pack.id, quantity); setAdded(true); }}>
                     {added ? <><Check size={17} /> Added to order</> : <>Add to order list</>}
@@ -169,9 +164,9 @@ function ProductView({ item }: { item: PriceItem }) {
               </div>
 
               <ul className="pdp-assure">
-                <li><Check size={16} /> Rates from the price list effective 06 July 2026</li>
+                <li><Check size={16} /> MRP printed on every book</li>
                 <li><Check size={16} /> Mix categories in one order to reach the next slab</li>
-                <li><Check size={16} /> Freight and final invoice confirmed by our team</li>
+                <li><Check size={16} /> Wholesale rate, freight and invoice confirmed by our team</li>
               </ul>
             </div>
           </div>
@@ -180,32 +175,25 @@ function ProductView({ item }: { item: PriceItem }) {
 
       <section className="section section--tight section--paper">
         <div className="container">
-          <h2 className="pdp-h2">All options &amp; rates</h2>
+          <h2 className="pdp-h2">All options &amp; MRPs</h2>
           <div className="ptable-wrap">
             <table className="ptable pdp-table">
               <thead>
                 <tr>
                   <th scope="col">Option</th>
                   <th scope="col">Cover</th>
-                  <th scope="col" className="num">Rate / {unit}</th>
-                  <th scope="col" className="num">Dozen</th>
                   <th scope="col" className="num">MRP</th>
-                  <th scope="col" className="num">Margin</th>
                   <th scope="col" className="num">Bundle</th>
                   <th scope="col">Size</th>
                 </tr>
               </thead>
               <tbody>
                 {item.variants.map((v) => {
-                  const m = marginOf(item, v);
                   return (
                     <tr key={v.id} className={v.id === variant.id ? 'is-selected' : ''} onClick={() => setVariantId(v.id)}>
                       <td>{v.option}</td>
                       <td>{v.colour ?? '—'}</td>
-                      <td className="num"><strong>{currency(v.rate)}</strong></td>
-                      <td className="num">{v.dozenRate !== undefined ? currency(v.dozenRate) : '—'}</td>
-                      <td className="num">{v.mrp !== undefined ? currency(v.mrp) : '—'}</td>
-                      <td className="num">{m !== undefined ? `${m}%` : '—'}</td>
+                      <td className="num"><strong>{v.mrp !== undefined ? mrpText(item, v).replace('MRP ', '') : 'On request'}</strong></td>
                       <td className="num">{v.bundle ?? '—'}</td>
                       <td>{v.size ?? '—'}</td>
                     </tr>
@@ -231,9 +219,9 @@ function ProductView({ item }: { item: PriceItem }) {
                   <span className="fav-range">{priceCategoryLabel(p.category)}</span>
                   <strong className="fav-name">{p.name}</strong>
                   <span className="fav-price">
-                    <small>From</small>
-                    <b>{currency(Math.min(...p.variants.map((v) => v.rate)))}</b>
-                    <small>/ {p.unit === 'book' ? 'piece' : p.unit}</small>
+                    {minMrp(p) !== undefined
+                      ? <><small>MRP from</small><b>{currency(minMrp(p)!)}</b>{mrpPer(p) && <small>/ {mrpPer(p)}</small>}</>
+                      : <small>MRP on request</small>}
                   </span>
                 </Link>
               ))}

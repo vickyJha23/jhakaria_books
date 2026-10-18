@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import NotebookArt from '../components/NotebookArt';
-import { BUSINESS, bySlug } from '../data/site';
-import { PRICE_CATEGORIES, PRICE_ITEMS, type PriceItem } from '../data/priceList';
-import { artFor, brandOf, categoryArt, categoryColours, gsmOf, pagesOf, SHOP_GROUPS, type CategoryId } from '../data/shop';
+import { BUSINESS, YEARS_IN_BUSINESS, bySlug } from '../data/site';
+import { PRICE_CATEGORIES, PRICE_ITEMS } from '../data/priceList';
+import { artFor, brandOf, categoryArt, categoryColours, gsmOf, minMrp, mrpPer, pagesOf, SHOP_GROUPS, type CategoryId } from '../data/shop';
 import { currency } from '../order/context';
 import { ArrowRight, Whatsapp } from '../components/Icons';
 
@@ -30,6 +30,20 @@ const BLURB: Record<CategoryId, string> = {
   registers: 'A-Class C-ruled registers from 1 to 10 quires, centre silai and regzine bound.',
 };
 
+/**
+ * One short company note per chapter, printed in the space under the products —
+ * like a line written at the foot of a notebook page.
+ */
+const NOTES = [
+  `Since ${BUSINESS.established}, every Jakharia book has been ruled, printed and stitched in our own unit.`,
+  'Season stock is planned before the academic rush, so your shelves are full when schools reopen.',
+  'Paper is checked for GSM, brightness and opacity before a single sheet is ruled.',
+  `${YEARS_IN_BUSINESS} years on, the same promise is printed on every cover: “${BUSINESS.tagline}.”`,
+  'Mix categories in one order — slab rates are worked out on the total, not per line.',
+  'Want your school, shop or brand on the cover? Custom covers are designed and printed in-house.',
+  'Cartons are shrink-wrapped and strapped for transit, so books arrive the way they left Vapi.',
+];
+
 const CHAPTERS = PRICE_CATEGORIES.map((c, i) => {
   const items = PRICE_ITEMS.filter((item) => item.category === c.id);
   const variants = items.flatMap((item) => item.variants);
@@ -39,14 +53,13 @@ const CHAPTERS = PRICE_CATEGORIES.map((c, i) => {
     no: String(i + 1).padStart(2, '0'),
     label: c.label,
     items,
-    from: Math.min(...variants.map((v) => v.rate)),
+    // Lowest printed MRP, ignoring per-sheet / per-supplement MRPs that would understate a packet.
+    from: (() => { const m = items.filter((i) => !mrpPer(i)).map(minMrp).filter((x): x is number => x !== undefined); return m.length ? Math.min(...m) : undefined; })(),
     pages: pages.length ? [Math.min(...pages), Math.max(...pages)] as const : undefined,
     colours: categoryColours(c.id as CategoryId),
     group: SHOP_GROUPS.find((g) => (g.categories as readonly string[]).includes(c.id))!.label,
   };
 });
-
-const unitWord = (item: PriceItem) => (item.unit === 'packet' ? 'pkt' : item.unit === 'register' ? 'reg' : 'pc');
 
 export default function Catalogue() {
   const [active, setActive] = useState(CHAPTERS[0].id);
@@ -73,17 +86,37 @@ export default function Catalogue() {
 
   return (
     <div className="cat">
+      {/* ---------- Print only: the PDF is bound as a book ---------- */}
+      <section className="cat-book-cover" aria-hidden="true">
+        <div className="cat-bc-spine" />
+        <div className="cat-bc-board">
+          <span className="cat-bc-kicker">Est. {BUSINESS.established} · Season 2026–27</span>
+          <h2 className="cat-bc-title"><span>The</span>Jakharia<em>Catalogue</em></h2>
+          <span className="cat-bc-rule" />
+          <div className="cat-bc-books">
+            {cover.map((p, i) => (
+              <span key={p.slug} className={`cat-bc-book cat-bc-book--${i}`}><NotebookArt product={p} height={170} eager /></span>
+            ))}
+          </div>
+          <p className="cat-bc-lede">{PRICE_ITEMS.length} product lines · {PRICE_CATEGORIES.length} categories · printed MRPs</p>
+          <div className="cat-bc-plate">
+            <strong>{BUSINESS.legalName}</strong>
+            <span>{BUSINESS.city}, {BUSINESS.state} · “{BUSINESS.tagline}”</span>
+          </div>
+        </div>
+      </section>
+
       {/* ---------- Cover ---------- */}
       <section className="cat-cover">
         <div className="container cat-cover-in">
           <div className="cat-cover-copy">
-            <span className="cat-kicker">Season 2026–27 · Wholesale catalogue</span>
+            <span className="cat-kicker">Est. {BUSINESS.established} · Season 2026–27 catalogue</span>
             <h1>
               <span>The</span> Jakharia <em>Catalogue</em>
             </h1>
             <p className="cat-cover-lede">
-              {PRICE_ITEMS.length} product lines across {PRICE_CATEGORIES.length} categories — every rate, MRP,
-              size and bundle from our price list effective 06 July 2026, in one place.
+              {PRICE_ITEMS.length} product lines across {PRICE_CATEGORIES.length} categories — every option, printed MRP,
+              size and bundle in one place.
             </p>
             <div className="cat-actions">
               <button type="button" className="btn btn--primary" onClick={() => window.print()}>Download PDF</button>
@@ -117,7 +150,7 @@ export default function Catalogue() {
                     <span className="cat-index-no">{c.no}</span>
                     <span className="cat-index-name">{c.label}</span>
                     <span className="cat-leader" />
-                    <span className="cat-index-from">from {currency(c.from)}</span>
+                    <span className="cat-index-from">{c.from !== undefined ? currency(c.from) : 'On request'}</span>
                   </a>
                 </li>
               ))}
@@ -155,7 +188,7 @@ export default function Catalogue() {
                 <dl className="cat-ch-facts">
                   <div><dt>Lines</dt><dd>{c.items.length}</dd></div>
                   {c.pages && <div><dt>Pages</dt><dd>{c.pages[0] === c.pages[1] ? c.pages[0] : `${c.pages[0]}–${c.pages[1]}`}</dd></div>}
-                  <div><dt>From</dt><dd>{currency(c.from)}</dd></div>
+                  {c.from !== undefined && <div><dt>MRP from</dt><dd>{currency(c.from)}</dd></div>}
                 </dl>
               </div>
               <div className="cat-ch-art" aria-hidden="true"><NotebookArt product={categoryArt(c.id)} height="clamp(120px, 16vw, 190px)" /></div>
@@ -182,20 +215,22 @@ export default function Catalogue() {
                         {item.variants.map((v) => (
                           <li key={v.id}>
                             <span className="cat-rate-opt">{pagesOf(v) ? `${pagesOf(v)} pp` : v.option.split(' · ')[0]}</span>
-                            <strong>{currency(v.rate)}<small>/{unitWord(item)}</small></strong>
+                            <strong>{v.mrp !== undefined ? <>{currency(v.mrp)}{mrpPer(item) && <small>/{mrpPer(item)}</small>}</> : <small>On request</small>}</strong>
                             <span className="cat-rate-sub">
-                              {v.mrp !== undefined ? `MRP ₹${v.mrp}` : '—'}
-                              {v.bundle !== undefined && ` · ${v.bundle}${v.dozenRate !== undefined ? ' dz' : item.unit === 'packet' ? ' pk' : ' pc'}`}
+                              MRP{v.bundle !== undefined && ` · bundle ${v.bundle}${v.dozenRate !== undefined ? ' dz' : item.unit === 'packet' ? ' pk' : ' pc'}`}
                             </span>
                           </li>
                         ))}
                       </ul>
-                      {item.note && <p className="cat-item-note">{item.note}</p>}
                     </div>
                   </article>
                 );
               })}
             </div>
+            <aside className="cat-ch-note">
+              <span className="cat-ch-note-tag">Est. {BUSINESS.established}</span>
+              <p>{NOTES[Number(c.no) % NOTES.length]}</p>
+            </aside>
           </div>
         </section>
       ))}
@@ -206,7 +241,7 @@ export default function Catalogue() {
           <div>
             <span className="cat-kicker">To order</span>
             <h2>Send us your list — we confirm stock, freight and a dispatch date, usually the same day.</h2>
-            <p>All rates are wholesale; freight is confirmed when you order. Drawing paper, paper items and C-ruled registers include 18% GST. Bundles are counted in dozens for books, packets for paper and pieces for registers. Sizes ±2%.</p>
+            <p>Prices shown are printed MRPs. Wholesale rates, freight and the final invoice are confirmed by our team when you order. Bundles are counted in dozens for books, packets for paper and pieces for registers. Sizes ±2%.</p>
           </div>
           <div className="cat-back-contact">
             <a href={BUSINESS.whatsapp} target="_blank" rel="noreferrer" className="btn btn--primary"><Whatsapp size={17} /> {BUSINESS.phone}</a>
@@ -214,6 +249,22 @@ export default function Catalogue() {
             <span>{BUSINESS.legalName} · {BUSINESS.city}, {BUSINESS.state}</span>
           </div>
         </div>
+      </section>
+
+      {/* ---------- Print only: back cover ---------- */}
+      <section className="cat-book-back" aria-hidden="true">
+        <div className="cat-bc-board cat-bc-board--back">
+          <span className="cat-bc-kicker">To order</span>
+          <h2>Send us your list on WhatsApp</h2>
+          <p>We reply with wholesale rates, availability, freight and a dispatch date — usually the same day.</p>
+          <div className="cat-bc-contact">
+            <strong>{BUSINESS.phone}</strong>
+            <span>{BUSINESS.email}</span>
+            <span>{BUSINESS.legalName} · {BUSINESS.city}, {BUSINESS.state}</span>
+          </div>
+          <p className="cat-bc-fine">Prices are printed MRPs. Bundles are counted in dozens for books, packets for paper and pieces for registers. Sizes ±2%.</p>
+        </div>
+        <div className="cat-bc-spine cat-bc-spine--right" />
       </section>
     </div>
   );

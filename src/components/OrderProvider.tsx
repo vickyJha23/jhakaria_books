@@ -39,7 +39,6 @@ export default function OrderProvider({ children }: { children: ReactNode }) {
     });
     return {
       lines,
-      subtotal: lines.reduce((sum, l) => sum + l.pack.price * l.line.quantity, 0),
       totalPieces: lines.reduce((sum, l) => sum + l.pack.pieces * l.line.quantity, 0),
       add: (item, variant, pack, quantity = 1) => setCart((current) => {
         const next = { itemId: item.id, variantId: variant.id, pack, quantity };

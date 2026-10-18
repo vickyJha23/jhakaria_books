@@ -78,7 +78,8 @@ body {
   font-size: 16px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden would make <body> a scroll container and break every position: sticky. */
+  overflow-x: clip;
 }
 
 img, svg { display: block; max-width: 100%; }

@@ -5,7 +5,7 @@ import { currency, useOrder } from '../order/context';
 import { PRICE_CATEGORIES, PRICE_ITEMS, priceCategoryLabel, type PriceItem, type PriceVariant } from '../data/priceList';
 import {
   PAGE_BUCKETS, PRICE_BUCKETS, SHOP_GROUPS, UNIT_LABEL,
-  artFor, brandOf, categoryArt, coversOf, defaultPack, gsmOf, marginOf, packsFor, pagesOf,
+  artFor, brandOf, categoryArt, coversOf, defaultPack, gsmOf, minMrp, mrpPer, mrpText, packsFor, pagesOf,
   type CategoryId, type PackId,
 } from '../data/shop';
 import { Close } from './Icons';
@@ -28,15 +28,14 @@ const TABLE_PAGE_SIZE = 10;
 
 const SORTS = [
   { id: 'list', label: 'Price-list order' },
-  { id: 'price-asc', label: 'Rate: low to high' },
-  { id: 'price-desc', label: 'Rate: high to low' },
+  { id: 'mrp-asc', label: 'MRP: low to high' },
+  { id: 'mrp-desc', label: 'MRP: high to low' },
   { id: 'pages-desc', label: 'Most pages' },
-  { id: 'margin-desc', label: 'Best retail margin' },
   { id: 'name', label: 'Name A–Z' },
 ] as const;
 
 const FACET_TITLE: Record<Facet, string> = {
-  range: 'Category', brand: 'Brand', gsm: 'Paper', pages: 'Page count', price: 'Rate per unit', cover: 'Cover finish', unit: 'Sold as',
+  range: 'Category', brand: 'Brand', gsm: 'Paper', pages: 'Page count', price: 'Printed MRP', cover: 'Cover finish', unit: 'Sold as',
 };
 
 const productValues = (item: PriceItem): Partial<Record<Facet, string>> => ({
@@ -47,7 +46,7 @@ const variantValues = (variant: PriceVariant): Partial<Record<Facet, string[]>> 
   const pages = pagesOf(variant);
   return {
     pages: pages === undefined ? [] : PAGE_BUCKETS.filter((b) => b.test(pages)).map((b) => b.id),
-    price: PRICE_BUCKETS.filter((b) => b.test(variant.rate)).map((b) => b.id),
+    price: variant.mrp === undefined ? [] : PRICE_BUCKETS.filter((b) => b.test(variant.mrp!)).map((b) => b.id),
     cover: coversOf(variant),
   };
 };
@@ -152,14 +151,13 @@ export default function PriceListShop() {
       const variants = matchingVariants(item, filters);
       return variants.length ? [{ item, variants }] : [];
     });
-    const minRate = (r: (typeof rows)[number]) => Math.min(...r.variants.map((v) => v.rate));
+    // Lines without a printed MRP sort last either way.
+    const lowMrp = (r: (typeof rows)[number]) => Math.min(Infinity, ...r.variants.flatMap((v) => (v.mrp === undefined ? [] : [v.mrp])));
     const maxPages = (r: (typeof rows)[number]) => Math.max(0, ...r.variants.map((v) => pagesOf(v) ?? 0));
-    const bestMargin = (r: (typeof rows)[number]) => Math.max(-1, ...r.variants.map((v) => marginOf(r.item, v) ?? -1));
     const sorted = [...rows];
-    if (sort === 'price-asc') sorted.sort((a, b) => minRate(a) - minRate(b));
-    if (sort === 'price-desc') sorted.sort((a, b) => minRate(b) - minRate(a));
+    if (sort === 'mrp-asc') sorted.sort((a, b) => lowMrp(a) - lowMrp(b));
+    if (sort === 'mrp-desc') sorted.sort((a, b) => (Number.isFinite(lowMrp(b)) ? lowMrp(b) : -1) - (Number.isFinite(lowMrp(a)) ? lowMrp(a) : -1));
     if (sort === 'pages-desc') sorted.sort((a, b) => maxPages(b) - maxPages(a));
-    if (sort === 'margin-desc') sorted.sort((a, b) => bestMargin(b) - bestMargin(a));
     if (sort === 'name') sorted.sort((a, b) => a.item.name.localeCompare(b.item.name));
     return sorted;
   }, [filters, sort]);
@@ -198,7 +196,10 @@ export default function PriceListShop() {
   const stripCategories = group === 'all'
     ? PRICE_CATEGORIES.map((c) => c.id)
     : SHOP_GROUPS.find((g) => g.id === group)!.categories;
-  const categoryFrom = (id: string) => Math.min(...PRICE_ITEMS.filter((i) => i.category === id).flatMap((i) => i.variants.map((v) => v.rate)));
+  const categoryFrom = (id: string) => {
+    const mrps = PRICE_ITEMS.filter((i) => i.category === id && !mrpPer(i)).map(minMrp).filter((m): m is number => m !== undefined);
+    return mrps.length ? Math.min(...mrps) : undefined;
+  };
   const categoryTotal = (id: string) => PRICE_ITEMS.filter((i) => i.category === id).length;
 
   const { add } = useOrder();
@@ -215,9 +216,9 @@ export default function PriceListShop() {
     <div className="shop" id="price-list">
       <div className="shop-heading">
         <div>
-          <span className="eyebrow">Wholesale price list · effective 06 July 2026</span>
+          <span className="eyebrow">Product range · MRPs as printed</span>
           <h2>Shop by category</h2>
-          <p className="lede">{PRICE_ITEMS.length} product lines across {PRICE_CATEGORIES.length} categories. Filter, compare rates and margins, then send your order on WhatsApp. <Link to="/catalogue" className="tlink">Prefer a printable catalogue?</Link></p>
+          <p className="lede">{PRICE_ITEMS.length} product lines across {PRICE_CATEGORIES.length} categories. Filter by size, pages and MRP, then send your list on WhatsApp for wholesale rates. <Link to="/catalogue" className="tlink">Prefer a printable catalogue?</Link></p>
         </div>
         <label className="shop-search">
           <span className="sr-only">Search the price list</span>
@@ -241,7 +242,7 @@ export default function PriceListShop() {
             <button key={id} type="button" className={`shop-cat ${active ? 'is-active' : ''}`} aria-pressed={active} onClick={() => update('range', active ? null : id)}>
               <span className="shop-cat-art"><NotebookArt product={categoryArt(id as CategoryId)} height={86} /></span>
               <strong>{priceCategoryLabel(id)}</strong>
-              <small>{categoryTotal(id)} lines · from {currency(categoryFrom(id))}</small>
+              <small>{categoryTotal(id)} lines{categoryFrom(id) !== undefined && ` · MRP from ${currency(categoryFrom(id)!)}`}</small>
             </button>
           );
         })}
@@ -396,8 +397,8 @@ function FacetOption({ checked, count, label, onChange }: { checked: boolean; co
 type AddFn = (item: PriceItem, variant: PriceVariant, pack: PackId, quantity?: number) => void;
 
 /**
- * Shop card: kept to what a buyer scans — cover, name, rate and one add
- * button. Pack choice, notes and the full rate table live on the product page.
+ * Shop card: kept to what a buyer scans — cover, name, printed MRP and one add
+ * button. Pack choice and every option live on the product page.
  */
 function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: PriceVariant[]; onAdd: AddFn }) {
   const [variantId, setVariantId] = useState(variants[0].id);
@@ -405,7 +406,6 @@ function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: Pri
   const pack = packsFor(item, variant).find((p) => p.id === defaultPack(variant))!;
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const margin = marginOf(item, variant);
   const gsm = gsmOf(item);
   const href = `/products/${item.id}`;
   const unit = item.unit === 'packet' ? 'packet' : item.unit === 'register' ? 'register' : 'pc';
@@ -421,7 +421,6 @@ function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: Pri
     <article className="ptile">
       <Link to={href} className="ptile-art" aria-label={`View ${item.name}`}>
         <NotebookArt product={artFor(item)} height={180} />
-        {margin !== undefined && <span className="ptile-margin">{margin}% margin</span>}
       </Link>
 
       <div className="ptile-body">
@@ -439,13 +438,13 @@ function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: Pri
         )}
 
         <div className="ptile-price">
-          <strong>{currency(variant.rate)}</strong>
-          <small>/{unit}</small>
-          {variant.mrp !== undefined && <s>₹{variant.mrp}</s>}
+          {variant.mrp !== undefined
+            ? <><small>MRP</small><strong>{currency(variant.mrp)}</strong>{mrpPer(item) && <small>/ {mrpPer(item)}</small>}</>
+            : <span className="ptile-ask">MRP on request</span>}
         </div>
         <p className="ptile-meta">
           {pagesOf(variant) === undefined || variants.length === 1 ? `${variant.option} · ` : ''}
-          {variant.dozenRate !== undefined ? `${currency(variant.dozenRate)}/doz` : variant.size}
+          {variant.size}
           {variant.bundle !== undefined && ` · ${variant.bundle} ${variant.dozenRate !== undefined ? 'doz' : item.unit === 'packet' ? 'pkts' : 'pcs'} bundle`}
         </p>
 
@@ -473,8 +472,6 @@ function PriceTable({ rows, onAdd }: { rows: { item: PriceItem; variants: PriceV
             <th scope="col">Product</th>
             <th scope="col">Option</th>
             <th scope="col">Cover</th>
-            <th scope="col" className="num">Rate</th>
-            <th scope="col" className="num">Dozen</th>
             <th scope="col" className="num">MRP</th>
             <th scope="col" className="num">Bundle</th>
             <th scope="col">Size</th>
@@ -488,14 +485,12 @@ function PriceTable({ rows, onAdd }: { rows: { item: PriceItem; variants: PriceV
                 {i === 0 && (
                   <th scope="rowgroup" rowSpan={variants.length} className="ptable-name">
                     <Link to={`/products/${item.id}`}>{item.name}</Link>
-                    <small>{priceCategoryLabel(item.category)}{item.note?.includes('GST inclusive') && ' · GST incl.'}</small>
+                    <small>{priceCategoryLabel(item.category)}</small>
                   </th>
                 )}
                 <td>{v.option}</td>
                 <td>{v.colour ?? '—'}</td>
-                <td className="num"><strong>{currency(v.rate)}</strong></td>
-                <td className="num">{v.dozenRate !== undefined ? currency(v.dozenRate) : '—'}</td>
-                <td className="num">{v.mrp !== undefined ? currency(v.mrp) : '—'}</td>
+                <td className="num"><strong>{v.mrp !== undefined ? mrpText(item, v).replace('MRP ', '') : 'On request'}</strong></td>
                 <td className="num">{v.bundle ?? '—'}</td>
                 <td className="ptable-size">{v.size ?? '—'}</td>
                 <td>

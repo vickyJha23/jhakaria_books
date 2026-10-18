@@ -104,26 +104,44 @@ export const PAGE_BUCKETS = [
   { id: '200-plus', label: 'Above 200 pages', test: (p: number) => p > 200 },
 ] as const;
 
+/** Filter buckets on the printed MRP — the only price the public site shows. */
 export const PRICE_BUCKETS = [
-  { id: 'under-10', label: 'Under ₹10', test: (r: number) => r < 10 },
-  { id: '10-25', label: '₹10 – ₹25', test: (r: number) => r >= 10 && r < 25 },
-  { id: '25-50', label: '₹25 – ₹50', test: (r: number) => r >= 25 && r < 50 },
-  { id: '50-100', label: '₹50 – ₹100', test: (r: number) => r >= 50 && r < 100 },
-  { id: '100-plus', label: '₹100 and above', test: (r: number) => r >= 100 },
+  { id: 'under-30', label: 'MRP under ₹30', test: (r: number) => r < 30 },
+  { id: '30-60', label: 'MRP ₹30 – ₹60', test: (r: number) => r >= 30 && r < 60 },
+  { id: '60-100', label: 'MRP ₹60 – ₹100', test: (r: number) => r >= 60 && r < 100 },
+  { id: '100-200', label: 'MRP ₹100 – ₹200', test: (r: number) => r >= 100 && r < 200 },
+  { id: '200-plus', label: 'MRP ₹200 and above', test: (r: number) => r >= 200 },
 ] as const;
 
 export const UNIT_LABEL: Record<PriceItem['unit'], string> = { book: 'Books', packet: 'Packets', register: 'Registers' };
 
-/** Retail margin on the printed MRP, when MRP and rate are for the same unit. */
-export function marginOf(item: PriceItem, variant: PriceVariant): number | undefined {
-  if (variant.mrp === undefined || variant.mrp <= variant.rate || item.note?.startsWith('Printed MRP')) return undefined;
-  return Math.round(((variant.mrp - variant.rate) / variant.mrp) * 100);
+/*
+ * Only the printed MRP is shown on the site; wholesale rates stay in the price
+ * list data for the team and are quoted on WhatsApp.
+ */
+
+/** What the MRP is printed per, when it is not the unit the line is sold in. */
+export function mrpPer(item: PriceItem): string {
+  if (!item.note?.startsWith('Printed MRP')) return '';
+  return item.note.includes('per sheet') ? 'sheet' : item.note.includes('per supplement') ? 'supplement' : '';
+}
+
+export function mrpText(item: PriceItem, variant: PriceVariant): string {
+  if (variant.mrp === undefined) return 'MRP on request';
+  const per = mrpPer(item);
+  return `MRP ₹${variant.mrp.toLocaleString('en-IN')}${per ? ` / ${per}` : ''}`;
+}
+
+/** Lowest printed MRP across a line's options, if any option carries one. */
+export function minMrp(item: PriceItem): number | undefined {
+  const mrps = item.variants.map((v) => v.mrp).filter((m): m is number => m !== undefined);
+  return mrps.length ? Math.min(...mrps) : undefined;
 }
 
 /* ---------------- Packs: how a line can be ordered ---------------- */
 
 export type PackId = 'piece' | 'dozen' | 'bundle';
-export interface Pack { id: PackId; label: string; pieces: number; price: number }
+export interface Pack { id: PackId; label: string; pieces: number }
 
 /**
  * Books sell by the piece or dozen and bundles are counted in dozens; packets
@@ -132,13 +150,12 @@ export interface Pack { id: PackId; label: string; pieces: number; price: number
  */
 export function packsFor(item: PriceItem, variant: PriceVariant): Pack[] {
   const single = item.unit === 'packet' ? 'Packet' : item.unit === 'register' ? 'Register' : 'Piece';
-  const packs: Pack[] = [{ id: 'piece', label: single, pieces: 1, price: variant.rate }];
-  if (variant.dozenRate !== undefined) packs.push({ id: 'dozen', label: 'Dozen', pieces: 12, price: variant.dozenRate });
+  const packs: Pack[] = [{ id: 'piece', label: single, pieces: 1 }];
+  if (variant.dozenRate !== undefined) packs.push({ id: 'dozen', label: 'Dozen', pieces: 12 });
   if (variant.bundle !== undefined) {
     const pieces = variant.dozenRate !== undefined ? variant.bundle * 12 : variant.bundle;
-    const price = variant.dozenRate !== undefined ? variant.bundle * variant.dozenRate : variant.bundle * variant.rate;
     const count = variant.dozenRate !== undefined ? `${variant.bundle} doz` : `${variant.bundle} ${item.unit === 'packet' ? 'pkts' : 'pcs'}`;
-    packs.push({ id: 'bundle', label: `Bundle (${count})`, pieces, price });
+    packs.push({ id: 'bundle', label: `Bundle (${count})`, pieces });
   }
   return packs;
 }

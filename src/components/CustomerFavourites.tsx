@@ -27,7 +27,8 @@ export default function CustomerFavourites() {
   const cards = FAVOURITES.flatMap(({ id, slug }) => {
     const item = PRICE_ITEMS.find((entry) => entry.id === id);
     if (!item) return [];
-    const cheapest = item.variants.reduce((low, variant) => (variant.rate < low.rate ? variant : low));
+    // The lowest printed MRP is the headline price; lines without one show "MRP on request".
+    const cheapest = item.variants.reduce((low, v) => ((v.mrp ?? Infinity) < (low.mrp ?? Infinity) ? v : low));
     const range = PRICE_CATEGORIES.find((entry) => entry.id === item.category)?.label ?? '';
     return [{ item, cheapest, range, product: bySlug(slug) }];
   });
@@ -42,7 +43,7 @@ export default function CustomerFavourites() {
           </div>
           <Reveal delay={150}>
             <Link to="/products" className="tlink">
-              See the full price list <ArrowRight size={16} />
+              See the full range <ArrowRight size={16} />
             </Link>
           </Reveal>
         </div>
@@ -57,11 +58,11 @@ export default function CustomerFavourites() {
                 <span className="fav-range">{range}</span>
                 <strong className="fav-name">{item.name}</strong>
                 <span className="fav-price">
-                  <small>Wholesale from</small>
-                  <b>{currency(cheapest.rate)}</b>
-                  <small>/ {item.unit}</small>
+                  {cheapest.mrp !== undefined
+                    ? <><small>MRP from</small><b>{currency(cheapest.mrp)}</b></>
+                    : <small>MRP on request</small>}
                 </span>
-                {cheapest.mrp !== undefined && <span className="fav-mrp">MRP {currency(cheapest.mrp)} · {cheapest.option}</span>}
+                <span className="fav-mrp">{cheapest.option}</span>
               </Link>
             </Reveal>
           ))}

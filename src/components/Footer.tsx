@@ -75,7 +75,7 @@ export default function Footer() {
           <span>
             © {new Date().getFullYear()} {BUSINESS.legalName}. All rights reserved.
           </span>
-          <span>Made in Vapi, Gujarat 🇮🇳</span>
+          <span>Est. {BUSINESS.established} · Made in Vapi, Gujarat 🇮🇳</span>
           <button
             type="button"
             className="ftr-top-btn"

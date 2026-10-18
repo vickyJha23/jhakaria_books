@@ -57,7 +57,7 @@ const PILLARS = [
 
 /** Three-up promise strip, after Prime Paper's expertise / unit / Made-in-India row. */
 const PROMISES = [
-  { icon: <Factory />, title: 'Our own manufacturing unit', body: 'Consistent quality and timely delivery from Vapi' },
+  { icon: <Factory />, title: `Manufacturing since ${BUSINESS.established}`, body: 'Consistent quality and timely delivery from our own unit in Vapi' },
   { icon: <Tag />, title: 'Mill-direct wholesale rates', body: 'No middle layer between our machines and your godown' },
   { icon: <Shield />, title: '100% Made in India', body: 'Adding proud pages to the notebook of the Indian economy' },
 ];
@@ -112,7 +112,7 @@ export default function Home() {
         <div className="container hero-in">
           <div className="hero-copy">
             <span className="eyebrow hero-eyebrow">
-              Manufacturers · Vapi, Gujarat
+              Since {BUSINESS.established} · Manufacturers · Vapi, Gujarat
             </span>
 
             <h1 className="hero-title">
