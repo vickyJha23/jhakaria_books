@@ -104,6 +104,9 @@
   background: var(--paper);
   z-index: 89;
   overflow-y: auto;
+  /* .hdr sets pointer-events: none so the empty strip around the pill stays click-through;
+     the menu sits inside .hdr and would inherit that, so it must opt back in. */
+  pointer-events: auto;
   animation: rise .4s var(--ease) both;
 }
 .mnav-in { display: grid; gap: 4px; padding-block: calc(var(--hdr-h) + 12px) 40px; }

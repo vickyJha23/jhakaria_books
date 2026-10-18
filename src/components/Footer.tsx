@@ -21,9 +21,9 @@ export default function Footer() {
               distributors, wholesalers, schools and tuition centres across India with
               customised books at mill-direct prices.
             </p>
-            <a href={BUSINESS.catalog} target="_blank" rel="noreferrer" className="btn btn--wa btn--sm">
+            <Link to="/catalogue" className="btn btn--wa btn--sm">
               <Whatsapp size={16} /> Browse the full catalogue
-            </a>
+            </Link>
           </div>
 
           <nav className="ftr-col" aria-label="Products">

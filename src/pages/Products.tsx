@@ -1,33 +1,16 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PriceListShop from '../components/PriceListShop';
 import PageHead from '../components/PageHead';
 import { ArrowRight } from '../components/Icons';
-import ThreeProductCatalog from '../components/ThreeProductCatalog';
-import { PRODUCTS } from '../data/site';
 
 export default function Products() {
-  const [galleryOpen, setGalleryOpen] = useState(false);
-  const [selectedSlug, setSelectedSlug] = useState(PRODUCTS[0].slug);
   return (
     <>
       <PageHead
         eyebrow="Wholesale catalogue"
-        title="The full range, with clear rates"
-        lede="Browse Jakharia Books products by the categories in our current price list. Choose a page count or pack, build an order, and send it to us on WhatsApp."
+        title="The full range, at a glance"
+        lede="Browse every Jakharia Books product by category, check sizes, pages and printed MRPs, then send your order list to us on WhatsApp for wholesale rates."
       />
-
-      <section className="section section--tight cover-gallery-section">
-        <div className="container">
-          <details className="cover-gallery" open={galleryOpen} onToggle={(event) => setGalleryOpen(event.currentTarget.open)}>
-            <summary>
-              <span><small>INTERACTIVE THREE.JS COVER GALLERY</small><strong>Explore the notebook covers</strong></span>
-              <span className="cover-gallery-toggle" aria-hidden="true">{galleryOpen ? '−' : '+'}</span>
-            </summary>
-            {galleryOpen && <ThreeProductCatalog products={PRODUCTS} selectedSlug={selectedSlug} onSelect={(product) => setSelectedSlug(product.slug)} />}
-          </details>
-        </div>
-      </section>
 
       <section className="section section--tight section--paper">
         <div className="container">
