@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import NotebookArt from '../components/NotebookArt';
+import Logo from '../components/Logo';
+import CatalogueSheets from '../components/CatalogueSheets';
 import { BUSINESS } from '../data/site';
-import { PRICE_CATEGORIES, PRICE_ITEMS } from '../data/priceList';
+import { PRICE_CATEGORIES, PRICE_ITEMS, type PriceItem } from '../data/priceList';
 import { artFor, brandOf, categoryColours, gsmOf, minMrp, mrpPer, pagesOf, subjectsFor, type CategoryId, rangeOrder } from '../data/shop';
 import { currency } from '../order/context';
 import { ArrowRight, Whatsapp } from '../components/Icons';
@@ -11,8 +13,8 @@ import { useContent } from '../i18n/context';
 /**
  * The season catalogue as a book: a cover, a contents page, one page per
  * product type (specs and printed MRPs), and a back page. Wide screens show
- * an open spread, phones one page at a time. Printing lays every spread out on
- * its own landscape A4 sheet as the same open spreads — that is what "Download PDF" saves.
+ * an open spread, phones one page at a time. Printing (and the downloadable PDF)
+ * uses the A4 catalogue in CatalogueSheets instead.
  */
 
 const CHAPTERS = PRICE_CATEGORIES.map((c) => {
@@ -23,11 +25,31 @@ const CHAPTERS = PRICE_CATEGORIES.map((c) => {
   return { id, items, from: mrps.length ? Math.min(...mrps) : undefined, colour: categoryColours(id).cover };
 });
 
-type Page = { kind: 'cover' } | { kind: 'contents' } | { kind: 'chapter'; chapter: (typeof CHAPTERS)[number] } | { kind: 'back' };
-const PAGES: Page[] = [{ kind: 'cover' }, { kind: 'contents' }, ...CHAPTERS.map((chapter) => ({ kind: 'chapter' as const, chapter })), { kind: 'back' }];
-const pageOfChapter = (id: CategoryId) => PAGES.findIndex((p) => p.kind === 'chapter' && p.chapter.id === id);
-/** The PDF is printed as the same open book: the cover alone, then pages 1–2, 3–4 … one spread per landscape sheet. */
-const PRINT_SPREADS = [[0], ...Array.from({ length: Math.ceil((PAGES.length - 1) / 2) }, (_, k) => [2 * k + 1, 2 * k + 2].filter((p) => p < PAGES.length))];
+type Chapter = (typeof CHAPTERS)[number];
+type Page = { kind: 'cover' } | { kind: 'contents' } | { kind: 'chapter'; chapter: Chapter; part: number; items: PriceItem[] } | { kind: 'back' };
+
+/**
+ * Book pages are a fixed size, so a long chapter runs on over more pages instead of stretching one.
+ * An item takes one unit, plus a little for each extra line of prices; the first page of a chapter
+ * also carries its heading and blurb, so it holds a little less.
+ */
+const FIRST_PAGE_UNITS = 4.6;
+const PAGE_UNITS = 5.5;
+const units = (item: PriceItem) => 1 + 0.3 * Math.floor((item.variants.length - 1) / 4);
+function paginate(chapter: Chapter): Page[] {
+  const pages: PriceItem[][] = [[]];
+  let used = 0;
+  for (const item of chapter.items) {
+    const cap = pages.length === 1 ? FIRST_PAGE_UNITS : PAGE_UNITS;
+    if (pages[pages.length - 1].length && used + units(item) > cap) { pages.push([]); used = 0; }
+    pages[pages.length - 1].push(item);
+    used += units(item);
+  }
+  return pages.map((items, part) => ({ kind: 'chapter' as const, chapter, part, items }));
+}
+
+const PAGES: Page[] = [{ kind: 'cover' }, { kind: 'contents' }, ...CHAPTERS.flatMap(paginate), { kind: 'back' }];
+const pageOfChapter = (id: CategoryId) => PAGES.findIndex((p) => p.kind === 'chapter' && p.chapter.id === id && p.part === 0);
 
 const WIDE = '(min-width: 900px)';
 const useWide = () => useSyncExternalStore(
@@ -90,7 +112,7 @@ export default function Catalogue() {
     if (Math.abs(dx) > 50) step(dx < 0 ? 1 : -1);
   };
 
-  // "Download PDF" links arrive as /catalogue?print=1 — open the print dialog once the page has loaded.
+  // Old /catalogue?print=1 links still open the print dialog once the page has loaded.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('print') !== '1') return;
     const print = () => window.setTimeout(() => window.print(), 600);
@@ -113,11 +135,18 @@ export default function Catalogue() {
       case 'cover':
         return (
           <div className="bk-cover">
+            <span className="bk-cover-corner bk-cover-corner--tl" aria-hidden="true" />
+            <span className="bk-cover-corner bk-cover-corner--tr" aria-hidden="true" />
+            <span className="bk-cover-corner bk-cover-corner--bl" aria-hidden="true" />
+            <span className="bk-cover-corner bk-cover-corner--br" aria-hidden="true" />
+            <span className="bk-cover-ribbon" aria-hidden="true" />
+            <Logo size={58} />
             <span className="bk-cover-kicker">{T.coverKicker}</span>
             <h1 className="bk-cover-title"><small>{T.titleSmall}</small>{T.titleMain}<em>{T.titleEm}</em></h1>
             <div className="bk-cover-books" aria-hidden="true">
-              {cover.map((b, i) => <span key={b.slug} className={`bk-cover-book bk-cover-book--${i}`}><NotebookArt product={b} height={150} eager /></span>)}
+              {cover.map((b, i) => <span key={b.slug} className={`bk-cover-book bk-cover-book--${i}`}><NotebookArt product={b} height={210} eager /></span>)}
             </div>
+            <span className="bk-cover-seal" aria-hidden="true"><small>Since</small>1987</span>
             <p className="bk-cover-foot"><strong>{BUSINESS.legalName}</strong>{BUSINESS.city}, {BUSINESS.state} · “{BUSINESS.tagline}”</p>
           </div>
         );
@@ -129,7 +158,7 @@ export default function Catalogue() {
               {CHAPTERS.map((c) => (
                 <li key={c.id}>
                   <button type="button" onClick={() => go(pageOfChapter(c.id))}>
-                    <span className="bk-dot" style={{ background: c.colour }} />
+                    <span className="bk-contents-num" style={{ '--chip': c.colour } as React.CSSProperties}>{String(CHAPTERS.indexOf(c) + 1).padStart(2, '0')}</span>
                     <span className="bk-contents-name">{CATEGORY_LABELS[c.id]}</span>
                     <i aria-hidden="true" />
                     <span className="bk-contents-no">{pageOfChapter(c.id)}</span>
@@ -146,18 +175,19 @@ export default function Catalogue() {
           <div className="bk-inner" style={{ '--ch': c.colour } as React.CSSProperties}>
             <span className="bk-tab" aria-hidden="true" />
             <header className="bk-ch-head">
-              <h2>{CATEGORY_LABELS[c.id]}</h2>
-              {c.from !== undefined && <span className="bk-ch-from">{S.mrpFrom} <b>{currency(c.from)}</b></span>}
+              <span className="bk-ch-num" aria-hidden="true">{String(CHAPTERS.indexOf(c) + 1).padStart(2, '0')}</span>
+              <h2>{CATEGORY_LABELS[c.id]}{p.part > 0 && <small className="bk-ch-contd"> ({T.contd})</small>}</h2>
+              {p.part === 0 && c.from !== undefined && <span className="bk-ch-from">{S.mrpFrom} <b>{currency(c.from)}</b></span>}
             </header>
-            <p className="bk-ch-blurb">{CATALOGUE_BLURB[c.id]}</p>
-            <ul className={`bk-items ${c.items.length > 7 ? 'bk-items--dense' : ''}`}>
-              {c.items.map((item) => {
+            {p.part === 0 && <p className="bk-ch-blurb">{CATALOGUE_BLURB[c.id]}</p>}
+            <ul className="bk-items">
+              {p.items.map((item) => {
                 const gsm = gsmOf(item);
                 const sizes = [...new Set(item.variants.map((v) => v.size).filter(Boolean))];
                 const spec = [brandOf(item), gsm !== 'Standard' && gsm, sizes.length === 1 && sizes[0]].filter(Boolean).join(' · ');
                 return (
                   <li key={item.id} className="bk-item">
-                    <span className="bk-item-art" aria-hidden="true"><NotebookArt product={artFor(item)} height={58} /></span>
+                    <span className="bk-item-art" aria-hidden="true"><NotebookArt product={artFor(item)} height={74} /></span>
                     <div className="bk-item-body">
                       <h3><Link to={`/products/${item.id}`}>{item.name.replace(/ · \d+ GSM/i, '')}</Link></h3>
                       <span className="bk-item-spec">{spec}</span>
@@ -204,7 +234,8 @@ export default function Catalogue() {
             <h2>{T.titleMain} {T.titleEm}</h2>
           </div>
           <div className="bk-actions">
-            <button type="button" className="btn btn--primary btn--sm" onClick={() => window.print()}>{T.download}</button>
+            {/* A ready-made PDF of the book (built by `pnpm catalogue:pdf`), downloaded directly. */}
+            <a className="btn btn--primary btn--sm" href="/jakharia-catalogue.pdf" download="Jakharia-Books-Catalogue-2026-27.pdf">{T.download}</a>
             <button type="button" className="btn btn--ghost btn--sm" onClick={share}><Whatsapp size={16} /> {T.share}</button>
             <Link to="/products" className="tlink">{T.orderOnline} <ArrowRight size={15} /></Link>
           </div>
@@ -238,18 +269,8 @@ export default function Catalogue() {
         </nav>
       </div>
 
-      {/* Print only: every spread of the book, one per sheet */}
-      <div className="bk-print" aria-hidden="true">
-        {PRINT_SPREADS.map((pair) => (
-          <div key={pair[0]} className={`bk-print-spread ${pair.length === 1 ? 'is-closed' : ''}`}>
-            {pair.map((i) => (
-              <section key={i} className={`bk-page bk-page--${i === 0 || i % 2 === 0 ? 'right' : 'left'} bk-page--${PAGES[i].kind} is-shown`}>
-                {renderPage(PAGES[i], i)}
-              </section>
-            ))}
-          </div>
-        ))}
-      </div>
+      {/* Print only: the A4 catalogue (what Download PDF holds) */}
+      <CatalogueSheets chapters={CHAPTERS} />
     </div>
   );
 }

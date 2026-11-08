@@ -563,6 +563,16 @@ const FAQS = [
 
 /** Headings and labels on the catalogue page and its printed PDF. */
 const CATALOGUE_COPY = {
+  sheets: {
+    product: 'Product', catalogue: 'Catalogue',
+    aboutTitle: 'About us', madeTitle: 'How our books are made',
+    steps: [{ t: 'Paper reel', d: 'Paper is checked for GSM, brightness and opacity before it is used.' }, { t: 'Ruling', d: 'The reels are ruled on our own machines — single, double, four line, square or graph.' }, { t: 'Printing', d: 'Covers are printed in-house, with gloss, matt or UV finishes.' }, { t: 'Stitching & binding', d: 'Sheets are gathered and thread-stitched, soft or case bound.' }, { t: 'Cutting', d: 'Three-side trimming gives every book clean, square edges.' }, { t: 'Packing', d: 'Books are counted, bundled and strapped for safe transport.' }],
+    pageNo: 'Page No.', date: 'Date', size: 'Size', pages: 'Pages', mrp: 'M.R.P', bundle: 'Bundle', onRequest: 'On request',
+    ruling: 'Ruling', subjects: 'Subjects', moreDesigns: 'other cover designs available', doz: 'doz', pkts: 'pkts', pcs: 'pcs',
+    rulingNames: { ruled: 'Single line', graph: 'Graph', plain: 'Plain', diagram: 'Plain + ruled', register: 'C-ruled' },
+    footnote: 'Note: images and details of the products are subject to change without prior notice.', backKicker: 'Notebooks & paper products',
+  },
+  contd: 'contd.',
   season: 'Season 2026–27',
   titleSmall: 'The',
   titleMain: 'Jakharia',

@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "catalogue:pdf": "node scripts/catalogue-pdf.mjs && python scripts/compress-pdf.py public/jakharia-catalogue.pdf"
   },
   "dependencies": {
     "gsap": "^3.15.0",

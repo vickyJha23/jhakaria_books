@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Reveal from '../components/Reveal';
 import AboutNotebook3D from '../components/AboutNotebook3D';
@@ -11,6 +11,18 @@ import { useContent } from '../i18n/context';
 export default function About() {
   const { ABOUT_CHAPTERS, ABOUT_COPY: T, ABOUT_VALUES } = useContent();
   const storyRef = useRef<HTMLElement>(null);
+  // The chapter in the middle of the screen is the one being read: it lights up, the rest dim.
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const els = storyRef.current?.querySelectorAll<HTMLElement>('.ab-chapter');
+    if (!els?.length) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.i)); }),
+      { rootMargin: '-45% 0px -45% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   return (
     <>
@@ -34,19 +46,27 @@ export default function About() {
       <section className="ab-story" id="our-story" ref={storyRef}>
         <div className="container ab-story-in">
           <div className="ab-story-stage">
-            <AboutNotebook3D pages={ABOUT_CHAPTERS} trackRef={storyRef} label={T.bookAria} />
-            <p className="ab-story-hint">{T.story.hint}</p>
+            <div className="ab-story-frame">
+              <span className="ab-story-glow" aria-hidden="true" />
+              <AboutNotebook3D pages={ABOUT_CHAPTERS} trackRef={storyRef} label={T.bookAria} />
+              <span className="ab-story-count" aria-hidden="true"><b>{ABOUT_CHAPTERS[active].no}</b> / {String(ABOUT_CHAPTERS.length).padStart(2, '0')}</span>
+            </div>
+            <p className="ab-story-hint"><span className="ab-story-mouse" aria-hidden="true" />{T.story.hint}</p>
           </div>
           <div className="ab-story-chapters">
             <Reveal><span className="eyebrow">{T.story.eyebrow}</span></Reveal>
             <Reveal delay={90}><h2>{T.story.title}</h2></Reveal>
-            {ABOUT_CHAPTERS.map((c) => (
-              <article key={c.no} className="ab-chapter">
-                <span className="ab-chapter-no">{c.no}</span>
-                <h3>{c.title}</h3>
-                <p>{c.body}</p>
-              </article>
-            ))}
+            <div className="ab-chapters" style={{ '--progress': (active + 0.5) / ABOUT_CHAPTERS.length } as React.CSSProperties}>
+              {ABOUT_CHAPTERS.map((c, i) => (
+                <article key={c.no} data-i={i} className={`ab-chapter ${i === active ? 'is-active' : ''} ${i < active ? 'is-read' : ''}`}>
+                  <span className="ab-chapter-dot" aria-hidden="true" />
+                  <span className="ab-chapter-no">{c.no}</span>
+                  <h3>{c.title}</h3>
+                  <p className="ab-chapter-note">{c.note}</p>
+                  <p>{c.body}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </section>

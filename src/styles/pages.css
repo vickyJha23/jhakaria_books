@@ -987,7 +987,9 @@ a.crow:hover { transform: translateX(4px); }
 .bk-book { position: relative; display: grid; grid-template-columns: 1fr 1fr; max-width: 1080px; margin: 0 auto; perspective: 2200px; filter: drop-shadow(0 30px 40px rgba(25, 24, 47, .18)); }
 .bk-book.is-closed { grid-template-columns: minmax(0, 520px); justify-content: center; }
 .bk-book.is-closed .bk-page--right { grid-column: 1; border-radius: 6px 14px 14px 6px; }
-.bk-page { display: none; position: relative; min-height: 640px; background: #fffdf8; }
+/* Pages keep one fixed size; long chapters continue on the next page (see paginate in Catalogue.tsx). */
+.bk-page { display: none; position: relative; height: 800px; overflow: hidden; background: #fffdf8; }
+.bk-ch-contd { color: var(--ink-mute); font-size: .55em; font-weight: 500; }
 .bk-page.is-shown { display: block; }
 .bk-page--left { grid-column: 1; border-radius: 14px 2px 2px 14px; box-shadow: -4px 4px 0 -1px #efe7da, -8px 8px 0 -2px #e6dccb; background: linear-gradient(90deg, #fffdf8 88%, #efe8db); }
 .bk-page--right { grid-column: 2; border-radius: 2px 14px 14px 2px; box-shadow: 4px 4px 0 -1px #efe7da, 8px 8px 0 -2px #e6dccb; background: linear-gradient(270deg, #fffdf8 88%, #efe8db); }
@@ -1062,39 +1064,81 @@ a.crow:hover { transform: translateX(4px); }
 
 @media (max-width: 899px) {
   .bk-book { grid-template-columns: 1fr; }
-  .bk-page { min-height: 560px; }
+  .bk-page { height: auto; min-height: 600px; overflow: visible; }
   .bk-inner { padding: 28px 24px 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .bk-page.is-shown { animation: none !important; } }
 
-/* ---------- Print / Save as PDF: the same open book, one spread per landscape A4 sheet ---------- */
-.bk-print { display: none; }
+/* ---------- Print / PDF: the A4 catalogue — sheets styled as ruled notebook pages ---------- */
+.sh-print { display: none; }
 @media print {
-  @page { size: A4 landscape; margin: 0; }
-  html { font-size: 11.5px; }
+  @page { size: A4; margin: 0; }
+  html { font-size: 10px; }
   .hdr, .ftr, .rail, .skip, .order-cart-trigger, .order-cart-panel, .bk > .container { display: none !important; }
-  html, body { background: #f3eee4 !important; overflow: visible !important; }
+  html, body, .bk { background: #fff !important; overflow: visible !important; padding: 0 !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .page-enter { animation: none !important; }
-  .bk { padding: 0; background: none; }
-  .bk-print { display: block; }
-  .bk-print-spread { display: grid; grid-template-columns: 1fr 1fr; width: 297mm; height: 210mm; padding: 10mm 16mm 12mm; overflow: hidden; break-after: page; background: radial-gradient(ellipse 70% 60% at 50% 55%, rgba(242, 159, 0, .1), transparent 70%), #f3eee4; }
-  .bk-print-spread:last-child { break-after: auto; }
-  .bk-print-spread.is-closed { grid-template-columns: 132mm; justify-content: center; }
-  .bk-print-spread.is-closed .bk-page--right { grid-column: 1; border-radius: 6px 14px 14px 6px; }
-  .bk-print .bk-page { min-height: 0; height: 100%; animation: none; }
-  .bk-print .bk-page--cover, .bk-print .bk-page--back { background: var(--brand-deep); }
-  .bk-print .bk-inner { padding: 9mm 11mm 12mm; }
-  .bk-print .bk-page--right .bk-inner { padding-left: 13mm; }
-  .bk-print .bk-page--left .bk-inner { padding-right: 13mm; }
-  .bk-print .bk-folio { bottom: 5mm; }
-  .bk-print .bk-cover, .bk-print .bk-back { inset: 7mm; }
-  .bk-print .bk-cover-title { font-size: 3.4rem; }
-  .bk-print .bk-item { padding: 7px 0; }
-  .bk-print .bk-contents button { padding: 5px 0; }
-  /* Long chapters (more than 7 lines) print in two columns so the page still fits its sheet. */
-  .bk-print .bk-items--dense { display: block; columns: 2; column-gap: 7mm; }
-  .bk-print .bk-items--dense .bk-item { break-inside: avoid; }
+  .sh-print { display: block; font-family: 'Kalam', var(--font-body); color: #1f2a6b; }
+  .sh-sheet { position: relative; width: 210mm; height: 297mm; overflow: hidden; break-after: page; }
+  .sh-sheet:last-child { break-after: auto; }
+
+  /* ruled notebook paper: blue lines every 8 mm, a double red margin */
+  .sh-sheet--ruled { background: #fff; }
+  .sh-sheet--ruled::before { position: absolute; top: 18mm; right: 0; bottom: 12mm; left: 0; content: '';
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='30.24'%3E%3Crect y='29.6' width='10' height='0.64' fill='%23bcc9ee'/%3E%3C/svg%3E") repeat 0 0 / 10px 8mm; }
+  .sh-sheet--ruled::after { position: absolute; top: 0; bottom: 0; left: 17mm; width: 1.4mm; content: ''; border-left: .3mm solid #e0625c; border-right: .3mm solid #e0625c; }
+  .sh-pageno { position: absolute; top: 7mm; right: 12mm; display: grid; grid-template-columns: auto 18mm; border: 1.2px solid #1f2a6b; border-radius: 3px; background: #fff; font-family: var(--font-body); font-size: .75rem; font-weight: 700; }
+  .sh-pageno > * { padding: .6mm 2mm; border-bottom: 1px solid #1f2a6b; }
+  .sh-pageno > :nth-last-child(-n+2) { border-bottom: 0; }
+  .sh-pageno b { border-left: 1px solid #1f2a6b; font-family: 'Kalam', cursive; font-size: .95rem; text-align: center; }
+  .sh-pill { position: absolute; top: 22mm; left: 50%; transform: translateX(-50%); padding: 1mm 12mm; border: 1.4px solid #1f2a6b; border-radius: 999px; background: #fff; color: #d6322b; font-family: 'Kalam', cursive; font-size: 2.3rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
+  .sh-content { position: absolute; top: 38mm; right: 12mm; bottom: 20mm; left: 24mm; display: grid; grid-auto-rows: 1fr; gap: 3mm; }
+  .sh-foot { position: absolute; right: 12mm; bottom: 7mm; left: 24mm; display: flex; align-items: center; justify-content: space-between; gap: 6mm; color: #1f2a6b; font-size: .85rem; }
+
+  .sh-item { display: grid; grid-template-rows: auto 1fr auto; gap: 1.5mm; min-height: 0; }
+  .sh-item-name { width: max-content; padding-bottom: .5mm; border-bottom: 1.5px solid #1f2a6b; color: #1f2a6b; font-family: 'Kalam', cursive; font-size: 2.1rem; font-weight: 700; line-height: 1.15; }
+  .sh-item-body { display: grid; grid-template-columns: 1.25fr 1fr; gap: 5mm; min-height: 0; }
+  .sh-item-photos { display: flex; gap: 2mm; min-height: 0; height: 100%; }
+  .sh-item-photos img, .sh-item-photos .nb { flex: 1; min-width: 0; height: 100%; max-height: 64mm; object-fit: contain; object-position: center top; }
+  .sh-item-info { display: grid; align-content: start; gap: 1.6mm; font-family: 'Kalam', cursive; }
+  .sh-item-size { font-size: 1.25rem; }
+  .sh-table { border-collapse: collapse; font-size: 1.2rem; line-height: 1.15; }
+  .sh-table th { color: #d6322b; font-weight: 700; text-align: left; padding: 0 3mm .4mm 0; border-bottom: 1.2px solid #1f2a6b; }
+  .sh-table th + th, .sh-table td + td { padding-left: 2.5mm; border-left: 1.2px solid #1f2a6b; }
+  .sh-table td { padding: .2mm 3mm .2mm 0; white-space: nowrap; }
+  .sh-ruling { display: flex; align-items: center; gap: 2mm; font-size: 1.15rem; }
+  .sh-ruling > span { color: #d6322b; font-weight: 700; }
+  .sh-ruling small { font-family: var(--font-body); font-size: .75rem; }
+  .sh-ruling-icon { width: 8mm; height: 10mm; fill: #fff; stroke: #6f80c4; stroke-width: 1; }
+  .sh-ruling-margin { stroke: #e0625c; }
+  .sh-item-note { font-size: 1.05rem; }
+
+  /* cover and back: deep blue board with the name set large in outline */
+  .sh-cover, .sh-back { background: radial-gradient(ellipse 70% 60% at 30% 70%, #3a3796, transparent 70%), #1f1c5c; color: #fff; }
+  .sh-cover-word { position: absolute; top: 8mm; right: 10mm; bottom: 8mm; writing-mode: vertical-rl; color: transparent; font-family: var(--font-display); font-size: 7.4rem; font-weight: 700; letter-spacing: .05em; line-height: 1; -webkit-text-stroke: 1.6px rgba(255,255,255,.9); text-align: center; }
+  .sh-cover-copy { position: absolute; bottom: 26mm; left: 18mm; display: grid; gap: 4mm; justify-items: start; }
+  .sh-cover-kicker { color: var(--gold); font-family: var(--font-body); font-size: 1rem; font-weight: 800; letter-spacing: .25em; text-transform: uppercase; }
+  .sh-cover h1 { display: grid; color: #fff; font-family: var(--font-display); font-size: 5.6rem; line-height: .95; }
+  .sh-cover h1 small { font-family: var(--font-body); font-size: .32em; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  .sh-cover-copy p { max-width: 80mm; color: #cfcde6; font-family: var(--font-body); font-size: 1.05rem; }
+
+  .sh-about { padding: 26mm 20mm; background: #1f1c5c; color: #fff; font-family: 'Kalam', cursive; }
+  .sh-about h2 { margin-bottom: 4mm; color: var(--gold); font-size: 2.6rem; text-decoration: underline; text-underline-offset: 2mm; }
+  .sh-about p { margin-bottom: 4mm; font-size: 1.45rem; line-height: 1.6; }
+  .sh-about-made { margin-top: 10mm; }
+  .sh-about-strip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4mm; margin-top: 14mm; }
+  .sh-about-strip img { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; border-radius: 2mm; background: #fff; padding: 1.5mm; }
+  .sh-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm 10mm; margin: 0; padding: 0; list-style: none; }
+  .sh-steps li { display: grid; grid-template-columns: 10mm 1fr; column-gap: 3mm; }
+  .sh-steps b { grid-row: span 2; display: grid; width: 9mm; height: 9mm; place-items: center; border-radius: 50%; background: var(--gold); color: #1f1c5c; font-size: 1.4rem; }
+  .sh-steps strong { font-size: 1.5rem; }
+  .sh-steps span { color: #cfcde6; font-size: 1.15rem; line-height: 1.4; }
+
+  .sh-back { display: grid; place-content: center; justify-items: center; gap: 5mm; text-align: center; font-family: var(--font-body); }
+  .sh-back h2 { color: #fff; font-family: var(--font-display); font-size: 3rem; }
+  .sh-back p { color: #cfcde6; font-size: 1.3rem; }
+  .sh-back-contact { color: #fff !important; font-size: 1.8rem !important; font-weight: 700; line-height: 1.6; }
+  .sh-back-fine { max-width: 120mm; font-size: .95rem !important; }
 }
 
 /* ---------- Keys to success: compact navy band — heading row, 3×2 reasons, stats strip ---------- */
@@ -1425,3 +1469,124 @@ a.crow:hover { transform: translateX(4px); }
 }
 
 
+
+/* ==========================================================================
+   Catalogue book — finishing: ruled-notebook pages, a cloth-bound cover with
+   gold corners, numbered chapters and product rows on tinted tiles
+   ========================================================================== */
+/* inner pages: faint blue rules and a red margin, like the notebooks inside */
+.bk-page--left:not(.bk-page--cover):not(.bk-page--back),
+.bk-page--right:not(.bk-page--cover):not(.bk-page--back),
+.bk-page--single:not(.bk-page--cover):not(.bk-page--back) {
+  background-image:
+    linear-gradient(90deg, transparent 26px, rgba(224, 98, 92, .28) 26px, rgba(224, 98, 92, .28) 27px, transparent 27px),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(80, 110, 190, .09) 31px 32px);
+  background-color: #fffdf8;
+}
+.bk-page--left:not(.bk-page--cover):not(.bk-page--back) { box-shadow: inset -26px 0 30px -26px rgba(120, 100, 70, .35), -4px 4px 0 -1px #efe7da, -8px 8px 0 -2px #e6dccb; }
+.bk-page--right:not(.bk-page--cover):not(.bk-page--back) { box-shadow: inset 26px 0 30px -26px rgba(120, 100, 70, .35), 4px 4px 0 -1px #efe7da, 8px 8px 0 -2px #e6dccb; }
+
+/* cover: cloth texture, gold frame corners, ribbon bookmark, seal */
+.bk-page--cover { background:
+    radial-gradient(ellipse 80% 60% at 50% 38%, rgba(90, 84, 190, .45), transparent 70%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.025) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.05) 0 2px, transparent 2px 5px),
+    #1d1a50; }
+.bk-cover { border-color: rgba(242, 159, 0, .45); justify-content: flex-start; padding-top: 44px; gap: 14px; }
+.bk-cover .logo { filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .35)); }
+.bk-cover-title { font-size: clamp(2.8rem, 5.4vw, 4.2rem); text-shadow: 0 4px 24px rgba(0, 0, 0, .3); }
+.bk-cover-title em { background: linear-gradient(180deg, #ffd27a, #f29f00 60%, #c97f00); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.bk-cover-books { margin: 18px 0 6px; }
+.bk-cover-book { margin: 0 -22px; }
+.bk-cover-corner { position: absolute; width: 34px; height: 34px; border: 2px solid #f2b54a; }
+.bk-cover-corner--tl { top: 10px; left: 10px; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+.bk-cover-corner--tr { top: 10px; right: 10px; border-left: 0; border-bottom: 0; border-radius: 0 8px 0 0; }
+.bk-cover-corner--bl { bottom: 10px; left: 10px; border-right: 0; border-top: 0; border-radius: 0 0 0 8px; }
+.bk-cover-corner--br { bottom: 10px; right: 10px; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+.bk-cover-ribbon { position: absolute; top: -18px; right: 56px; width: 22px; height: 120px; background: linear-gradient(180deg, #a31d2b, #c62a3a); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 86%, 0 100%); box-shadow: 0 6px 10px rgba(0, 0, 0, .3); }
+.bk-cover-seal { display: grid; place-items: center; width: 92px; height: 92px; margin-top: auto; border: 2px dashed rgba(242, 181, 74, .8); border-radius: 50%; color: #f2b54a; font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1; rotate: -10deg; }
+.bk-cover-seal small { font-family: var(--font-body); font-size: .62rem; font-weight: 800; letter-spacing: .3em; text-transform: uppercase; }
+.bk-cover-foot { margin-top: 10px; }
+
+/* contents: numbered colour chips */
+.bk-contents-title { font-size: 2.2rem; }
+/* the chip's colour comes in as background; a white face with a coloured edge keeps light chapter colours legible */
+.bk-contents-num { display: grid; flex: none; width: 32px; height: 22px; place-items: center; border-left: 5px solid; border-radius: 4px; background: #fff !important; border-color: var(--chip); box-shadow: inset 0 0 0 1px rgba(25, 24, 47, .12); color: var(--ink); font-family: var(--font-display); font-size: .8rem; font-weight: 700; }
+.bk-contents button { padding: 6px 0; }
+
+/* chapter head: big outlined number in the chapter colour */
+.bk-ch-head { position: relative; align-items: center; padding-left: 92px; min-height: 64px; }
+.bk-ch-num { position: absolute; left: 0; top: 50%; transform: translateY(-58%); color: transparent; font-family: var(--font-display); font-size: 3.2rem; font-weight: 700; line-height: 1; letter-spacing: -.02em; -webkit-text-stroke: 1.6px var(--ch); }
+.bk-ch-blurb { font-style: italic; }
+
+/* product rows: cover on a tile tinted with the chapter colour, prices as chips */
+.bk-item { grid-template-columns: 78px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid rgba(25, 24, 47, .08); }
+.bk-item-art { place-items: center; height: 92px; border-radius: 10px; background: color-mix(in srgb, var(--ch) 12%, #fff); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ch) 22%, transparent); }
+.bk-item-art .nb-photo, .bk-item-art .nb { max-width: 86%; max-height: 82px; filter: drop-shadow(0 6px 8px rgba(25, 24, 47, .2)); }
+.bk-item h3 { font-size: 1.06rem; }
+.bk-prices { gap: 5px; }
+.bk-prices > span { padding: 2px 8px; border: 1px solid color-mix(in srgb, var(--ch) 35%, var(--line)); border-radius: 999px; background: #fff; font-size: .8rem; }
+.bk-prices b { color: var(--brand); }
+
+@media (max-width: 899px) {
+  .bk-ch-head { padding-left: 64px; }
+  .bk-ch-num { font-size: 2.6rem; }
+  .bk-cover-ribbon { right: 30px; }
+}
+
+/* ==========================================================================
+   About · Our story — warm glow instead of the grid, a framed stage for the 3D
+   book, and chapters that light up as they are read along a gold progress rail
+   ========================================================================== */
+.ab-story { overflow: clip; background:
+    radial-gradient(ellipse 45% 40% at 22% 35%, rgba(242, 159, 0, .14), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 85% 80%, rgba(120, 100, 230, .22), transparent 70%),
+    linear-gradient(160deg, #221f62 0%, #1a1748 55%, #151238 100%); }
+.ab-story::before { background-image: radial-gradient(rgba(255, 255, 255, .06) 1px, transparent 1.2px); background-size: 26px 26px; mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000, transparent); }
+
+.ab-story-frame { position: relative; display: grid; min-height: 0; height: 100%; overflow: hidden; border: 1px solid rgba(255, 255, 255, .1); border-radius: 32px; background: linear-gradient(160deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 40px 80px -40px rgba(0, 0, 0, .6); }
+.ab-story-frame .nb3d { background: none; }
+.ab-story-glow { position: absolute; left: 50%; bottom: 12%; width: 70%; height: 46%; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, rgba(242, 159, 0, .28), rgba(242, 159, 0, .06) 45%, transparent 70%); filter: blur(10px); pointer-events: none; }
+.ab-story-count { position: absolute; left: 24px; bottom: 20px; color: rgba(255, 255, 255, .5); font-family: var(--font-display); font-size: 1rem; letter-spacing: .08em; }
+.ab-story-count b { color: var(--gold); font-size: 1.6rem; }
+.ab-story-hint { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.ab-story-mouse { position: relative; width: 16px; height: 24px; border: 1.5px solid rgba(255, 255, 255, .5); border-radius: 9px; }
+.ab-story-mouse::after { position: absolute; top: 5px; left: 50%; width: 2px; height: 5px; margin-left: -1px; border-radius: 1px; background: var(--gold); content: ''; animation: ab-wheel 1.6s ease-in-out infinite; }
+@keyframes ab-wheel { 0% { opacity: 0; transform: translateY(-2px); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(6px); } }
+
+/* the rail: a faint line, filled in gold up to the chapter being read */
+.ab-chapters { position: relative; }
+.ab-chapters::before, .ab-chapters::after { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; content: ''; }
+.ab-chapters::before { background: rgba(255, 255, 255, .1); }
+.ab-chapters::after { bottom: auto; height: calc(var(--progress) * 100%); background: linear-gradient(180deg, var(--gold), #ffcf6b); box-shadow: 0 0 12px rgba(242, 159, 0, .5); transition: height .6s var(--ease); }
+.ab-chapter { position: relative; border-left: 0; padding-left: 40px; opacity: .38; transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.ab-chapter.is-active { opacity: 1; transform: translateX(6px); }
+.ab-chapter.is-read { opacity: .55; }
+.ab-chapter-dot { position: absolute; left: -6px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border: 2px solid rgba(255, 255, 255, .3); border-radius: 50%; background: #1a1748; transition: border-color .4s, background .4s, box-shadow .4s; }
+.ab-chapter.is-active .ab-chapter-dot, .ab-chapter.is-read .ab-chapter-dot { border-color: var(--gold); background: var(--gold); }
+.ab-chapter.is-active .ab-chapter-dot { box-shadow: 0 0 0 6px rgba(242, 159, 0, .18); }
+.ab-chapter-no { font-size: 4.6rem; transition: -webkit-text-stroke-color .4s; -webkit-text-stroke-color: rgba(242, 159, 0, .6); }
+.ab-chapter.is-active .ab-chapter-no { -webkit-text-stroke-color: var(--gold); }
+.ab-chapter-note { color: #f5c56d !important; font-family: var(--font-display); font-size: 1.08rem !important; font-style: italic; }
+@media (prefers-reduced-motion: reduce) { .ab-chapter { opacity: 1; transform: none !important; } .ab-story-mouse::after { animation: none; } }
+@media (max-width: 860px) {
+  .ab-story-frame { border-radius: 20px; background: #221f5e; }
+  .ab-story-stage { padding-bottom: 6px; background: #1c1950; }
+  .ab-chapter { opacity: 1; }
+}
+
+/* About · Our story — compact: shorter chapters, a smaller stage, tighter padding */
+.ab-story { padding: clamp(48px, 6vw, 80px) 0; }
+.ab-story-stage { height: min(560px, calc(100vh - var(--hdr-h) - 60px)); top: calc(var(--hdr-h) + 24px); }
+.ab-story-chapters { padding-block: 2vh 14vh; }
+.ab-story-chapters h2 { margin: 10px 0 3vh; font-size: clamp(1.7rem, 3vw, 2.4rem); }
+.ab-chapter { min-height: 30vh; gap: 8px; }
+.ab-chapter-no { font-size: 3.2rem; }
+.ab-chapter h3 { font-size: clamp(1.3rem, 2.1vw, 1.65rem); }
+.ab-chapter p { font-size: .95rem; line-height: 1.65; }
+.ab-chapter-note { font-size: 1rem !important; }
+@media (max-width: 860px) {
+  .ab-story-stage { height: 38vh; }
+  .ab-chapter { min-height: 26vh; }
+  .ab-story-chapters { padding-block: 2vh 6vh; }
+}

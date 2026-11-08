@@ -14,7 +14,7 @@ export default function BrochureBanner() {
         <Reveal delay={160}>
           <div className="brochure-btns">
             <Link to="/catalogue" className="btn brochure-btn">{T.brochure.view}</Link>
-            <Link to="/catalogue?print=1" className="btn brochure-btn brochure-btn--solid">{T.brochure.download}</Link>
+            <a href="/jakharia-catalogue.pdf" download="Jakharia-Books-Catalogue-2026-27.pdf" className="btn brochure-btn brochure-btn--solid">{T.brochure.download}</a>
           </div>
         </Reveal>
       </div>
