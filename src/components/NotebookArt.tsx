@@ -1,4 +1,6 @@
+import { useId } from 'react';
 import type { Product } from '../data/site';
+import { isStudio } from '../data/studio';
 
 interface Props {
   product: Product;
@@ -9,6 +11,8 @@ interface Props {
   /** Load immediately — for above-the-fold images, which must not lazy-load */
   eager?: boolean;
   className?: string;
+  /** Text printed on the label plate in place of the placeholder bars — for custom-cover mock-ups. */
+  label?: { title: string; sub?: string };
 }
 
 /**
@@ -22,10 +26,13 @@ export default function NotebookArt({
   back = false,
   eager = false,
   className = '',
+  label,
 }: Props) {
   const { art, binding, name } = product;
   const h = typeof height === 'number' ? `${height}px` : height;
-  const uid = `na-${product.slug}`;
+  // Unique per instance: the same book can appear twice on a page (e.g. the hidden print cover),
+  // and a gradient id inside a display:none SVG paints nothing for every other copy.
+  const uid = `na-${useId().replace(/:/g, '')}`;
   const src = back && product.photoBack ? product.photoBack : product.photo;
 
   if (src) {
@@ -33,7 +40,7 @@ export default function NotebookArt({
       <img
         src={src}
         alt={`${name}${back ? ' — reverse' : ''}, manufactured by Jakharia Books, Vapi`}
-        className={`nb-photo ${className}`.trim()}
+        className={`nb-photo ${isStudio(src) ? 'is-studio' : ''} ${className}`.replace(/\s+/g, ' ').trim()}
         style={{ height: h }}
         loading={eager ? 'eager' : 'lazy'}
         fetchPriority={eager ? 'high' : undefined}
@@ -84,10 +91,20 @@ export default function NotebookArt({
         {/* Accent band + label plate */}
         <rect x="76" y="70" width="150" height="8" rx="4" fill={art.accent} />
         <rect x="76" y="98" width="150" height="94" rx="7" fill="#ffffff" opacity="0.94" />
-        <rect x="90" y="118" width="86" height="7" rx="3.5" fill={art.cover} opacity="0.8" />
-        <rect x="90" y="136" width="120" height="7" rx="3.5" fill={art.cover} opacity="0.45" />
-        <rect x="90" y="154" width="64" height="7" rx="3.5" fill={art.accent} />
-        <rect x="90" y="170" width="104" height="5" rx="2.5" fill={art.cover} opacity="0.22" />
+        {label ? (
+          <g textAnchor="middle">
+            <text x="151" y="140" fill={art.band} fontFamily="var(--font-display)" fontSize={Math.max(10, Math.min(19, 210 / label.title.length))} fontWeight="700" textLength={label.title.length > 13 ? 126 : undefined} lengthAdjust="spacingAndGlyphs">{label.title}</text>
+            <rect x="111" y="152" width="80" height="3" rx="1.5" fill={art.accent} />
+            {label.sub && <text x="151" y="176" fill={art.cover} fontFamily="var(--font-body)" fontSize="11.5" fontWeight="600" textLength={label.sub.length > 22 ? 128 : undefined} lengthAdjust="spacingAndGlyphs">{label.sub}</text>}
+          </g>
+        ) : (
+          <>
+            <rect x="90" y="118" width="86" height="7" rx="3.5" fill={art.cover} opacity="0.8" />
+            <rect x="90" y="136" width="120" height="7" rx="3.5" fill={art.cover} opacity="0.45" />
+            <rect x="90" y="154" width="64" height="7" rx="3.5" fill={art.accent} />
+            <rect x="90" y="170" width="104" height="5" rx="2.5" fill={art.cover} opacity="0.22" />
+          </>
+        )}
 
         {/* Ruled lines hinting the inner pages */}
         <g stroke={art.accent} strokeWidth="3" strokeLinecap="round" opacity="0.5">

@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import ContactRail from './components/ContactRail';
 import OrderProvider from './components/OrderProvider';
 import OrderCart from './components/OrderCart';
+import { useLang } from './i18n/context';
 import './styles/components.css';
 import './styles/pages.css';
 
@@ -17,21 +18,13 @@ const About = lazy(() => import('./pages/About'));
 const Contact = lazy(() => import('./pages/Contact'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
-const TITLES: Record<string, string> = {
-  '/': 'Jakharia Books — Notebook manufacturers in Vapi',
-  '/products': 'Shop all — wholesale price list — Jakharia Books',
-  '/customisation': 'Custom & bulk notebook orders — Jakharia Books',
-  '/catalogue': 'Wholesale catalogue 2026–27 — Jakharia Books',
-  '/about': 'About us — Jakharia Books',
-  '/contact': 'Become a distributor — Jakharia Books',
-};
-
 /** Resets scroll and document title on navigation; honours in-page #anchors. */
 function RouteEffects() {
   const { pathname, hash } = useLocation();
+  const { APP_COPY: T } = useLang().content;
 
   useEffect(() => {
-    document.title = TITLES[pathname] ?? 'Jakharia Books';
+    document.title = T.titles[pathname] ?? T.titleFallback;
 
     if (hash) {
       const el = document.querySelector(hash);
@@ -41,23 +34,26 @@ function RouteEffects() {
       }
     }
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
-  }, [pathname, hash]);
+  }, [pathname, hash, T]);
 
   return null;
 }
 
 export default function App() {
   const { pathname } = useLocation();
+  const { lang, content } = useLang();
+  const T = content.APP_COPY;
 
   return (
     <OrderProvider>
       <a className="skip" href="#main">
-        Skip to content
+        {T.skip}
       </a>
       <RouteEffects />
       <Header />
-      <main id="main" key={pathname} className="page-enter">
-        <Suspense fallback={<div className="route-loading" role="status"><span>JB</span> Opening the collection…</div>}>
+      {/* Keyed on language too, so page state built from copy (form choices, 3D page textures) starts fresh. */}
+      <main id="main" key={`${pathname}:${lang}`} className="page-enter">
+        <Suspense fallback={<div className="route-loading" role="status"><span>JB</span> {T.loading}</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/products" element={<Products />} />

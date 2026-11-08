@@ -1,16 +1,16 @@
 import { createContext, useContext } from 'react';
 import type { PriceItem, PriceVariant } from '../data/priceList';
-import type { Pack, PackId } from '../data/shop';
+import type { Pack, PackId, Subject } from '../data/shop';
 
 /** One line of the WhatsApp order list, as stored in localStorage. */
-export interface CartLine { itemId: string; variantId: string; pack: PackId; quantity: number }
+export interface CartLine { itemId: string; variantId: string; pack: PackId; quantity: number; subject?: Subject }
 
 export interface ResolvedLine { line: CartLine; item: PriceItem; variant: PriceVariant; pack: Pack }
 
 export interface OrderApi {
   lines: ResolvedLine[];
   totalPieces: number;
-  add: (item: PriceItem, variant: PriceVariant, pack: PackId, quantity?: number) => void;
+  add: (item: PriceItem, variant: PriceVariant, pack: PackId, quantity?: number, subject?: Subject) => void;
   change: (line: CartLine, delta: number) => void;
   remove: (line: CartLine) => void;
   open: boolean;

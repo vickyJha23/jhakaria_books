@@ -1,40 +1,32 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import NotebookArt from '../components/NotebookArt';
+import BookViews from '../components/BookViews';
 import { BUSINESS } from '../data/site';
-import { PRICE_ITEMS, priceCategoryLabel, type PriceItem } from '../data/priceList';
-import { artFor, brandOf, defaultPack, gsmOf, minMrp, mrpPer, mrpText, packsFor, pagesOf, type PackId } from '../data/shop';
+import { PRICE_ITEMS, type PriceItem } from '../data/priceList';
+import { artFor, bindingOf, photosFor, brandOf, coversOf, defaultPack, minMrp, mrpPer, mrpText, packsFor, pagesOf, rangeOrder, rulingOf, subjectsFor, BOOK_VIEWS, type BookView, type CategoryId, type PackId, type Subject } from '../data/shop';
+import { useContent } from '../i18n/context';
 import { currency, useOrder } from '../order/context';
+import type { Photo } from '../data/gallery';
 import { ArrowRight, Check, Whatsapp } from '../components/Icons';
 
-/** A plain-English summary built only from the price-list columns, so it can never overstate. */
-function summaryOf(item: PriceItem): string {
-  const pages = item.variants.map(pagesOf).filter((p): p is number => p !== undefined);
-  const sizes = [...new Set(item.variants.map((v) => v.size).filter(Boolean))];
-  const parts = [
-    `${item.name.replace(/ · .*$/, '')} is part of our ${priceCategoryLabel(item.category)} range`,
-    pages.length > 1 ? `made in ${pages.length} page counts from ${Math.min(...pages)} to ${Math.max(...pages)} pages` : pages.length === 1 ? `made in a ${pages[0]}-page edition` : `offered in ${item.variants.length} pack option${item.variants.length === 1 ? '' : 's'}`,
-  ];
-  const gsm = gsmOf(item);
-  return `${parts.join(', ')}${gsm !== 'Standard' ? ` on ${gsm} paper` : ''}${sizes.length === 1 ? `, sized ${sizes[0]} (±2%)` : ''}.`;
-}
-
 export default function ProductDetail() {
+  const { PDP_COPY: T } = useContent();
   const { id } = useParams();
   const item = PRICE_ITEMS.find((entry) => entry.id === id);
 
   useEffect(() => {
-    if (item) document.title = `${item.name} — Jakharia Books`;
+    if (item) document.title = `${item.name.replace(/ · \d+ GSM/i, '')} — Jakharia Books`;
   }, [item]);
 
   if (!item) {
     return (
       <section className="section pdp-missing">
         <div className="container center">
-          <span className="eyebrow">Not in the price list</span>
-          <h1>We couldn’t find that product</h1>
-          <p className="lede">It may have been renamed in the latest price list.</p>
-          <Link to="/products" className="btn btn--primary">Back to the shop <ArrowRight /></Link>
+          <span className="eyebrow">{T.missing.eyebrow}</span>
+          <h1>{T.missing.title}</h1>
+          <p className="lede">{T.missing.lede}</p>
+          <Link to="/products" className="btn btn--primary">{T.missing.cta} <ArrowRight /></Link>
         </div>
       </section>
     );
@@ -44,20 +36,59 @@ export default function ProductDetail() {
 }
 
 function ProductView({ item }: { item: PriceItem }) {
+  const { PDP_COPY: T, SHOP_COPY: S, UNIT_COPY: U, CATEGORY_LABELS, SUBJECT_LABELS } = useContent();
+  const subjects = subjectsFor(item);
+  const [subject, setSubject] = useState<Subject | undefined>(subjects[0]);
+  const label = (id: string) => CATEGORY_LABELS[id as CategoryId];
   const { add, setOpen } = useOrder();
   const art = artFor(item);
-  const [side, setSide] = useState<'front' | 'back'>('front');
+  const photos = photosFor(item);
+  const [shot, setShot] = useState(0);
   const [variantId, setVariantId] = useState(item.variants[0].id);
   const variant = item.variants.find((v) => v.id === variantId) ?? item.variants[0];
-  const packs = packsFor(item, variant);
+  const packs = packsFor(item, variant, U);
   const [packId, setPackId] = useState<PackId>(defaultPack(variant));
   const pack = packs.find((p) => p.id === packId) ?? packs[0];
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const gsm = gsmOf(item);
+  // GSM is left off the product page: the name, summary and specs show the book without it.
+  const title = item.name.replace(/ · \d+ GSM/i, '');
   const brand = brandOf(item);
-  const unit = item.unit === 'packet' ? 'packet' : item.unit === 'register' ? 'register' : 'piece';
-  const related = PRICE_ITEMS.filter((p) => p.category === item.category && p.id !== item.id);
+  const units = item.unit === 'packet' ? U.packets : item.unit === 'register' ? U.registers : U.pieces;
+  const pages = item.variants.map(pagesOf).filter((p): p is number => p !== undefined);
+  const sizes = [...new Set(item.variants.map((v) => v.size).filter(Boolean))];
+  const summary = T.summary({
+    name: item.name.replace(/ · .*$/, ''), category: label(item.category), pages, options: item.variants.length,
+    size: sizes.length === 1 ? sizes[0] : undefined,
+  });
+  // Gallery: real photographs first (when we hold any), then the illustrated views every line has.
+  const shots: ({ kind: 'photo'; photo: Photo } | { kind: 'view'; view: BookView })[] = [
+    ...photos.map((photo) => ({ kind: 'photo' as const, photo })),
+    // Drawn views only for lines we have not photographed.
+    ...(photos.length ? [] : BOOK_VIEWS.map((view) => ({ kind: 'view' as const, view }))),
+  ];
+  const current = shots[Math.min(shot, shots.length - 1)];
+  const ruling = rulingOf(item, variant);
+  const mrpLabel = variant.mrp !== undefined ? currency(variant.mrp) : undefined;
+
+  // Specifications for the selected option, each with a line on what it means.
+  const E = T.explain;
+  const cover = coversOf(variant);
+  const coverNote = cover.includes('UV + drip-off') ? E.cover.uv : cover.includes('Picture') ? E.cover.picture : cover.includes('Brown') ? E.cover.brown : cover.includes('Coloured board') ? E.cover.colour : undefined;
+  const bundleUnit = variant.dozenRate !== undefined ? U.dozens : item.unit === 'packet' ? U.packets : U.pieces;
+  const bundlePieces = variant.bundle !== undefined ? (variant.dozenRate !== undefined ? variant.bundle * 12 : variant.bundle) : 0;
+  const specs = [
+    pagesOf(variant) !== undefined && { key: 'pages', label: T.spec.pages, value: String(pagesOf(variant)), note: E.pages(pagesOf(variant)!) },
+    { key: 'ruling', label: T.spec.ruling, value: E.rulingName[ruling], note: E.ruling[ruling] },
+    subjects.length > 0 && { key: 'subjects', label: T.spec.subjects, value: subjects.map((sj) => SUBJECT_LABELS[sj]).join(' · '), note: E.subjects },
+    { key: 'binding', label: T.spec.binding, value: E.bindingName[bindingOf(item, variant)], note: E.binding[bindingOf(item, variant)] },
+    variant.size && { key: 'size', label: T.spec.size, value: variant.size, note: E.size },
+    variant.colour && { key: 'cover', label: T.spec.cover, value: variant.colour, note: coverNote },
+    variant.bundle !== undefined && { key: 'bundle', label: T.spec.bundle, value: `${variant.bundle} ${bundleUnit}`, note: E.bundle(variant.bundle, bundleUnit, bundlePieces) },
+    mrpLabel && { key: 'mrp', label: T.spec.mrp, value: `${mrpLabel}${mrpPer(item) ? ` / ${mrpPer(item)}` : ''}`, note: E.mrp },
+  ].filter((x): x is { key: string; label: string; value: string; note: string | undefined } => Boolean(x));
+
+  const related = rangeOrder(PRICE_ITEMS.filter((p) => p.category === item.category && p.id !== item.id));
   const more = related.length < 4
     ? [...related, ...PRICE_ITEMS.filter((p) => p.category !== item.category && brandOf(p) === brand).slice(0, 4 - related.length)]
     : related.slice(0, 4);
@@ -81,47 +112,51 @@ function ProductView({ item }: { item: PriceItem }) {
     <>
       <section className="pdp">
         <div className="container">
-          <nav className="crumbs" aria-label="Breadcrumb">
-            <Link to="/">Home</Link><span aria-hidden="true">/</span>
-            <Link to="/products">Shop all</Link><span aria-hidden="true">/</span>
-            <Link to={`/products?range=${item.category}`}>{priceCategoryLabel(item.category)}</Link><span aria-hidden="true">/</span>
-            <span aria-current="page">{item.name}</span>
+          <nav className="crumbs" aria-label={T.crumbsAria}>
+            <Link to="/">{T.home}</Link><span aria-hidden="true">/</span>
+            <Link to="/products">{T.shopAll}</Link><span aria-hidden="true">/</span>
+            <Link to={`/products?range=${item.category}`}>{label(item.category)}</Link><span aria-hidden="true">/</span>
+            <span aria-current="page">{title}</span>
           </nav>
 
           <div className="pdp-grid">
             <div className="pdp-media">
               <div className="pdp-stage">
-                <NotebookArt product={art} back={side === 'back'} height="min(400px, 70vw)" eager />
+                <div className="pdp-shot-wrap" key={`${shot}-${variant.id}`}>
+                  {current.kind === 'photo'
+                    ? <img src={current.photo.src} alt={`${title} — ${T.views[current.photo.shot]}`} className="nb-photo pdp-shot" />
+                    : <BookViews view={current.view} product={art} ruling={ruling} mrp={mrpLabel} height="min(380px, 66vw)" />}
+                </div>
                 <span className="ptile-brand">{brand}</span>
               </div>
-              {art.photoBack && (
-                <div className="pdp-thumbs" role="group" aria-label="Cover side">
-                  {(['front', 'back'] as const).map((s) => (
-                    <button key={s} type="button" aria-pressed={side === s} className={`pdp-thumb ${side === s ? 'is-active' : ''}`} onClick={() => setSide(s)}>
-                      <NotebookArt product={art} back={s === 'back'} height={70} />
-                      <span>{s === 'front' ? 'Front' : 'Back'}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {!art.photo && <p className="pdp-media-note">Illustration — ask us for a photo or a physical sample of the current cover.</p>}
+              <div className="pdp-thumbs" role="group" aria-label={T.optionsAria}>
+                {shots.map((sh, i) => (
+                  <button key={sh.kind === 'photo' ? sh.photo.src : sh.view} type="button" aria-pressed={shot === i} className={`pdp-thumb ${shot === i ? 'is-active' : ''}`} onClick={() => setShot(i)}>
+                    {sh.kind === 'photo'
+                      ? <img src={sh.photo.thumb} alt="" loading="lazy" />
+                      : <BookViews view={sh.view} product={art} ruling={ruling} mrp={mrpLabel} height={54} />}
+                    <span>{T.views[sh.kind === 'photo' ? sh.photo.shot : sh.view]}</span>
+                  </button>
+                ))}
+              </div>
+              {!photos.length && <p className="pdp-media-note">{T.viewsNote}</p>}
             </div>
 
             <div className="pdp-info">
-              <span className="ptile-cat">{priceCategoryLabel(item.category)}{gsm !== 'Standard' && ` · ${gsm}`}</span>
-              <h1>{item.name}</h1>
-              <p className="pdp-summary">{summaryOf(item)}</p>
+              <span className="ptile-cat">{label(item.category)}</span>
+              <h1>{title}</h1>
+              <p className="pdp-summary">{summary}</p>
 
               <div className="pdp-price">
                 {variant.mrp !== undefined
-                  ? <><small>MRP</small><strong>{currency(variant.mrp)}</strong>{mrpPer(item) && <small>/ {mrpPer(item)}</small>}</>
-                  : <strong className="pdp-ask">MRP on request</strong>}
-                <span className="pdp-wholesale">Wholesale rates shared on WhatsApp</span>
+                  ? <><small>{S.mrp}</small><strong>{currency(variant.mrp)}</strong>{mrpPer(item) && <small>/ {mrpPer(item)}</small>}</>
+                  : <strong className="pdp-ask">{S.mrpOnRequest}</strong>}
+                <span className="pdp-wholesale">{T.wholesale}</span>
               </div>
 
               <div className="pdp-block">
-                <span className="pdp-label">{item.variants.some((v) => pagesOf(v)) ? 'Pages / option' : 'Option'}</span>
-                <div className="ptile-variants" role="radiogroup" aria-label="Options">
+                <span className="pdp-label">{item.variants.some((v) => pagesOf(v)) ? T.pagesOption : T.option}</span>
+                <div className="ptile-variants" role="radiogroup" aria-label={T.optionsAria}>
                   {item.variants.map((v) => (
                     <button key={v.id} type="button" role="radio" aria-checked={v.id === variant.id} className={`ptile-variant ${v.id === variant.id ? 'is-active' : ''}`} onClick={() => setVariantId(v.id)} title={v.option}>
                       {pagesOf(v) ?? v.option.split(' · ')[0]}
@@ -131,60 +166,81 @@ function ProductView({ item }: { item: PriceItem }) {
                 <p className="ptile-option">{variant.option}{variant.colour && ` · ${variant.colour}`}</p>
               </div>
 
-              <dl className="pdp-specs">
-                {variant.size && <div><dt>Size (±2%)</dt><dd>{variant.size}</dd></div>}
-                {variant.bundle !== undefined && <div><dt>Bundle</dt><dd>{variant.bundle} {variant.dozenRate !== undefined ? 'dozen' : item.unit === 'packet' ? 'packets' : 'pieces'}</dd></div>}
-                {variant.colour && <div><dt>Cover</dt><dd>{variant.colour}</dd></div>}
-                {variant.pack && <div><dt>Pack</dt><dd>{variant.pack}</dd></div>}
-                <div><dt>Brand</dt><dd>{brand}</dd></div>
-              </dl>
+
+              {subjects.length > 0 && (
+                <div className="pdp-block">
+                  <span className="pdp-label">{S.subject}</span>
+                  <div className="ptile-subjects ptile-subjects--lg" role="radiogroup" aria-label={S.subject}>
+                    {subjects.map((sj) => (
+                      <button key={sj} type="button" role="radio" aria-checked={subject === sj} className={subject === sj ? 'is-active' : ''} onClick={() => setSubject(sj)}>
+                        {SUBJECT_LABELS[sj]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="pdp-buy">
-                <label className="pdp-label" htmlFor="pdp-pack">Order by</label>
+                <label className="pdp-label" htmlFor="pdp-pack">{T.orderBy}</label>
                 <div className="pdp-buy-row">
                   <select id="pdp-pack" value={pack.id} onChange={(e) => setPackId(e.target.value as PackId)}>
                     {packs.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
                   <div className="ptile-qty">
-                    <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
-                    <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} aria-label="Quantity" />
-                    <button type="button" onClick={() => setQuantity((q) => q + 1)} aria-label="Increase quantity">+</button>
+                    <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label={S.decrease}>−</button>
+                    <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} aria-label={S.quantity} />
+                    <button type="button" onClick={() => setQuantity((q) => q + 1)} aria-label={S.increase}>+</button>
                   </div>
                 </div>
-                <p className="pdp-total">{quantity} × {pack.label} = <strong>{(pack.pieces * quantity).toLocaleString('en-IN')} {unit}s</strong></p>
+                <p className="pdp-total">{quantity} × {pack.label} = <strong>{(pack.pieces * quantity).toLocaleString('en-IN')} {units}</strong></p>
                 <div className="pdp-actions">
-                  <button type="button" className={`btn btn--primary ${added ? 'is-added' : ''}`} onClick={() => { add(item, variant, pack.id, quantity); setAdded(true); }}>
-                    {added ? <><Check size={17} /> Added to order</> : <>Add to order list</>}
+                  <button type="button" className={`btn btn--primary ${added ? 'is-added' : ''}`} onClick={() => { add(item, variant, pack.id, quantity, subject); setAdded(true); }}>
+                    {added ? <><Check size={17} /> {T.added}</> : <>{T.addToOrder}</>}
                   </button>
                   {added
-                    ? <button type="button" className="btn btn--ghost" onClick={() => setOpen(true)}>View order list <ArrowRight size={16} /></button>
-                    : <a className="btn btn--ghost" href={`${BUSINESS.whatsapp}?text=${encodeURIComponent(ask)}`} target="_blank" rel="noreferrer"><Whatsapp size={17} /> Ask on WhatsApp</a>}
+                    ? <button type="button" className="btn btn--ghost" onClick={() => setOpen(true)}>{T.viewOrder} <ArrowRight size={16} /></button>
+                    : <a className="btn btn--ghost" href={`${BUSINESS.whatsapp}?text=${encodeURIComponent(ask)}`} target="_blank" rel="noreferrer"><Whatsapp size={17} /> {T.ask}</a>}
                 </div>
-                <button type="button" className="pdp-share" onClick={share}>Share this product</button>
+                <button type="button" className="pdp-share" onClick={share}>{T.share}</button>
               </div>
 
               <ul className="pdp-assure">
-                <li><Check size={16} /> MRP printed on every book</li>
-                <li><Check size={16} /> Mix categories in one order to reach the next slab</li>
-                <li><Check size={16} /> Wholesale rate, freight and invoice confirmed by our team</li>
+                {T.assure.map((a) => <li key={a}><Check size={16} /> {a}</li>)}
               </ul>
             </div>
           </div>
         </div>
       </section>
 
+      <section className="section section--tight">
+        <div className="container">
+          <div className="pdp-explain-head">
+            <h2 className="pdp-h2">{T.explainTitle}</h2>
+            <p>{T.explainLede} <b>{title} · {variant.option}</b></p>
+          </div>
+          <dl className="pdp-explain">
+            {specs.map((sp) => (
+              <div key={sp.key}>
+                <dt>{sp.label}</dt>
+                <dd><strong>{sp.value}</strong>{sp.note && <span>{sp.note}</span>}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
       <section className="section section--tight section--paper">
         <div className="container">
-          <h2 className="pdp-h2">All options &amp; MRPs</h2>
+          <h2 className="pdp-h2">{T.allOptions}</h2>
           <div className="ptable-wrap">
             <table className="ptable pdp-table">
               <thead>
                 <tr>
-                  <th scope="col">Option</th>
-                  <th scope="col">Cover</th>
-                  <th scope="col" className="num">MRP</th>
-                  <th scope="col" className="num">Bundle</th>
-                  <th scope="col">Size</th>
+                  <th scope="col">{S.table.option}</th>
+                  <th scope="col">{S.table.cover}</th>
+                  <th scope="col" className="num">{S.table.mrp}</th>
+                  <th scope="col" className="num">{S.table.bundle}</th>
+                  <th scope="col">{S.table.size}</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,7 +249,7 @@ function ProductView({ item }: { item: PriceItem }) {
                     <tr key={v.id} className={v.id === variant.id ? 'is-selected' : ''} onClick={() => setVariantId(v.id)}>
                       <td>{v.option}</td>
                       <td>{v.colour ?? '—'}</td>
-                      <td className="num"><strong>{v.mrp !== undefined ? mrpText(item, v).replace('MRP ', '') : 'On request'}</strong></td>
+                      <td className="num"><strong>{v.mrp !== undefined ? mrpText(item, v).replace('MRP ', '') : S.onRequest}</strong></td>
                       <td className="num">{v.bundle ?? '—'}</td>
                       <td>{v.size ?? '—'}</td>
                     </tr>
@@ -209,19 +265,19 @@ function ProductView({ item }: { item: PriceItem }) {
         <section className="section section--tight">
           <div className="container">
             <div className="pdp-related-head">
-              <h2 className="pdp-h2">You may also stock</h2>
-              <Link to={`/products?range=${item.category}`} className="tlink">All {priceCategoryLabel(item.category)} <ArrowRight size={16} /></Link>
+              <h2 className="pdp-h2">{T.related}</h2>
+              <Link to={`/products?range=${item.category}`} className="tlink">{T.allOf(label(item.category))} <ArrowRight size={16} /></Link>
             </div>
             <div className="favs-grid">
               {more.map((p) => (
                 <Link key={p.id} to={`/products/${p.id}`} className="fav-card">
                   <span className="fav-art"><NotebookArt product={artFor(p)} height={140} /></span>
-                  <span className="fav-range">{priceCategoryLabel(p.category)}</span>
+                  <span className="fav-range">{label(p.category)}</span>
                   <strong className="fav-name">{p.name}</strong>
                   <span className="fav-price">
                     {minMrp(p) !== undefined
-                      ? <><small>MRP from</small><b>{currency(minMrp(p)!)}</b>{mrpPer(p) && <small>/ {mrpPer(p)}</small>}</>
-                      : <small>MRP on request</small>}
+                      ? <><small>{S.mrpFrom}</small><b>{currency(minMrp(p)!)}</b>{mrpPer(p) && <small>/ {mrpPer(p)}</small>}</>
+                      : <small>{S.mrpOnRequest}</small>}
                   </span>
                 </Link>
               ))}

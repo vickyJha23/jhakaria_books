@@ -5,7 +5,7 @@
 
 /* Fraunces is pinned to WONK 0 — its default "wonky" ampersand and g read as
    decorative noise at heading sizes. */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,WONK@9..144,400..700,0&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,WONK@9..144,400..700,0&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@600&family=Noto+Serif+Devanagari:wght@500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Serif+Gujarati:wght@500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&display=swap');
 
 :root {
   /* Sampled from the supplied Corel/PDF logo artwork. */
@@ -38,8 +38,9 @@
   --line-strong: #ceccd8;
 
   /* Type */
-  --font-display: 'Fraunces', Georgia, serif;
-  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Latin text uses Fraunces / Plus Jakarta; Hindi and Gujarati glyphs fall through to the matching Noto faces. */
+  --font-display: 'Fraunces', 'Noto Serif Devanagari', 'Noto Serif Gujarati', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', 'Noto Sans Devanagari', 'Noto Sans Gujarati', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Space & shape */
   --r-sm: 7px;
@@ -48,7 +49,9 @@
   --r-xl: 26px;
   --container: 1200px;
   --gutter: clamp(18px, 5vw, 48px);
-  --hdr-h: 96px;              /* floating pill height + its top offset */
+  --hdr-top-h: 34px;          /* navy utility strip */
+  --hdr-bar-h: 78px;          /* white nav bar */
+  --hdr-h: calc(var(--hdr-top-h) + var(--hdr-bar-h));
 
   /* Elevation */
   --sh-sm: 0 1px 2px rgba(31, 29, 73, .06), 0 2px 8px rgba(31, 29, 73, .04);
@@ -69,6 +72,11 @@ html {
      body itself resolves back to visible, so decorative overflow still leaks. */
   overflow-x: clip;
 }
+
+/* Scrollbars hidden site-wide — the page and every inner scroller still scroll
+   with wheel, trackpad, touch and keyboard; only the bar itself is not drawn. */
+*, html { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar, html::-webkit-scrollbar { display: none; width: 0; height: 0; }
 
 body {
   margin: 0;
@@ -310,3 +318,16 @@ p  { margin: 0; }
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Phones: drop the utility strip and use a shorter bar */
+@media (max-width: 760px) {
+  :root { --hdr-top-h: 0px; --hdr-bar-h: 70px; }
+  .hdr-top { display: none; }
+}
+
+/* Hindi, Marathi & Gujarati: letter-spacing breaks up conjuncts and matras, and the scripts need a little more line height.
+   Small all-caps labels (nav, eyebrows) have no capitals to lean on, so they are set a size up. */
+:root:is(:lang(hi), :lang(mr), :lang(gu)) * { letter-spacing: 0 !important; }
+:root:is(:lang(hi), :lang(mr), :lang(gu)) body { line-height: 1.7; }
+:root:is(:lang(hi), :lang(mr), :lang(gu)) :is(h1, h2, h3, h4) { line-height: 1.3; }
+:root:is(:lang(hi), :lang(mr), :lang(gu)) :is(.nav-a, .eyebrow, .jstep-when, .cslider-head > span) { font-size: .9rem; }

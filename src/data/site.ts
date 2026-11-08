@@ -3,27 +3,9 @@
  *
  * Product names, sizes, page counts and MRPs below are transcribed from the
  * printed labels in the supplied product photographs — they are not estimates.
- * Items without a `photo` fall back to generated cover artwork (NotebookArt).
+ * Product photos are currently switched off, so every item shows generated cover artwork (NotebookArt).
  */
 
-import a4Astronaut from '../assets/products/a4-exercise-astronaut.jpg';
-import a4Galaxy from '../assets/products/a4-galaxy-connect-nature.jpg';
-import a4College from '../assets/products/a4-college-premium.jpg';
-import a5Orange from '../assets/products/a5-exercise-orange.jpg';
-import a5Yellow from '../assets/products/a5-exercise-yellow.jpg';
-import a5Back from '../assets/products/a5-exercise-back.jpg';
-import a5Spiral from '../assets/products/a5-spiral-yellow.jpg';
-import longBike from '../assets/products/long-book-bike.jpg';
-import longSpiral from '../assets/products/long-spiral-bike.jpg';
-import longPremium from '../assets/products/long-premium-real.jpg';
-import longKids from '../assets/products/long-kids-special.jpg';
-import longKidsBack from '../assets/products/long-kids-special-back.jpg';
-import jumboAClass from '../assets/products/jumbo-aclass.jpg';
-import jumboAClassBack from '../assets/products/jumbo-aclass-back.jpg';
-import jumboClassic from '../assets/products/jumbo-classic.jpg';
-import jumboClassicBack from '../assets/products/jumbo-classic-back.jpg';
-import starBack from '../assets/products/star-back.jpg';
-import a3Drawing from '../assets/products/a3-cartridge-drawing.jpg';
 
 export const BUSINESS = {
   name: 'Jakharia Books',
@@ -94,7 +76,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#0b7a3e', accent: '#fba600', band: '#064f28' },
     binding: 'stitched',
-    photo: a4Astronaut,
     featured: true,
   },
   {
@@ -113,7 +94,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#e0a800', accent: '#0b7a3e', band: '#1a1a1a' },
     binding: 'stitched',
-    photo: a4Galaxy,
     featured: true,
   },
   {
@@ -132,7 +112,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#b91c1c', accent: '#fba600', band: '#7f1212' },
     binding: 'case',
-    photo: a4College,
   },
   {
     slug: 'a5-exercise-book',
@@ -150,8 +129,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#e08a1e', accent: '#fff4dd', band: '#a25c0c' },
     binding: 'stitched',
-    photo: a5Orange,
-    photoBack: a5Back,
     featured: true,
   },
   {
@@ -170,7 +147,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#f2c200', accent: '#0b7a3e', band: '#b08c00' },
     binding: 'stitched',
-    photo: a5Yellow,
   },
   {
     slug: 'a5-spiral-note-book',
@@ -188,7 +164,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#f2c200', accent: '#0b7a3e', band: '#b08c00' },
     binding: 'spiral',
-    photo: a5Spiral,
   },
   {
     slug: 'long-note-book',
@@ -206,7 +181,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#6b5b4a', accent: '#f2c200', band: '#463a2e' },
     binding: 'soft',
-    photo: longBike,
     featured: true,
   },
   {
@@ -225,7 +199,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#8a8a8a', accent: '#f2c200', band: '#5c5c5c' },
     binding: 'spiral',
-    photo: longSpiral,
   },
   {
     slug: 'long-premium-book',
@@ -243,7 +216,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#8ac43f', accent: '#ffffff', band: '#5f8f24' },
     binding: 'soft',
-    photo: longPremium,
   },
   {
     slug: 'long-kids-special',
@@ -261,8 +233,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#4aa3d8', accent: '#ffffff', band: '#2b7aa8' },
     binding: 'soft',
-    photo: longKids,
-    photoBack: longKidsBack,
   },
   {
     slug: 'jumbo-note-book',
@@ -280,8 +250,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#e0a800', accent: '#0b7a3e', band: '#a87d00' },
     binding: 'stitched',
-    photo: jumboAClass,
-    photoBack: jumboAClassBack,
     featured: true,
   },
   {
@@ -300,8 +268,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#e0a800', accent: '#2f4b8f', band: '#a87d00' },
     binding: 'stitched',
-    photo: jumboClassic,
-    photoBack: jumboClassicBack,
   },
   {
     slug: 'star-exercise-book',
@@ -319,7 +285,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#e08a1e', accent: '#c1272d', band: '#a25c0c' },
     binding: 'stitched',
-    photo: starBack,
   },
   {
     slug: 'a3-cartridge-drawing-book',
@@ -337,7 +302,6 @@ export const PRODUCTS: Product[] = [
     ],
     art: { cover: '#f07c1e', accent: '#ffffff', band: '#b4540c' },
     binding: 'stitched',
-    photo: a3Drawing,
     featured: true,
   },
   {
@@ -394,4 +358,3 @@ export const PRODUCTS: Product[] = [
 export const bySlug = (slug: string): Product =>
   PRODUCTS.find((p) => p.slug === slug) ?? PRODUCTS[0];
 
-export const FEATURED = PRODUCTS.filter((p) => p.featured);

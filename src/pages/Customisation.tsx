@@ -1,75 +1,26 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import PageHead from '../components/PageHead';
 import Reveal from '../components/Reveal';
 import NotebookArt from '../components/NotebookArt';
 import { BUSINESS, bySlug } from '../data/site';
 import type { Product } from '../data/site';
-import { ArrowRight, Check, Whatsapp, Plus, Book, Factory, Tag, Palette, Truck, Shield } from '../components/Icons';
-import { PRICE_CATEGORIES } from '../data/priceList';
+import { ArrowRight, Check, Whatsapp, Icon } from '../components/Icons';
+import { useContent } from '../i18n/context';
+import { PRICE_ITEMS } from '../data/priceList';
+import { artFor } from '../data/shop';
+import { folderPhotos } from '../data/gallery';
 
-/** Cover palettes a customer can preview live. */
-const THEMES = [
-  { id: 'green', label: 'School green', art: { cover: '#0b7a3e', accent: '#f29f00', band: '#064f28' } },
-  { id: 'saffron', label: 'Festive saffron', art: { cover: '#c2410c', accent: '#fff4dd', band: '#8f2f08' } },
-  { id: 'emerald', label: 'Campus emerald', art: { cover: '#0e7c7b', accent: '#ffe1a5', band: '#08504f' } },
-  { id: 'plum', label: 'Deep plum', art: { cover: '#3c2a63', accent: '#f29f00', band: '#261a42' } },
-  { id: 'crimson', label: 'Sports crimson', art: { cover: '#9f1239', accent: '#ffe1a5', band: '#6b0c27' } },
-  { id: 'slate', label: 'Corporate slate', art: { cover: '#334155', accent: '#f29f00', band: '#1e293b' } },
-];
+/** Photo folders of custom jobs, in the order of CUSTOM_COPY.made.items. */
+const MADE_FOLDERS = ['06-bharuchi-patel-trust-custom-book', '07-al-nadi-ul-falah-school-custom-book'];
 
-const OPTIONS = [
-  {
-    t: 'School & institution covers',
-    d: 'Class-wise covers with your school name, crest, address and academic year. We hold your artwork on file, so next season is a re-order rather than a fresh setup.',
-  },
-  {
-    t: 'Party, event & campaign branding',
-    d: 'Symbols, candidate names, slogans and sponsor panels printed across the cover — produced quickly when campaign timelines are tight.',
-  },
-  {
-    t: 'Exam & tuition answer paper',
-    d: 'Printed headers, subject and marks blocks, roll-number grids and institute watermarks, supplied in sealed reams so papers stay secure until the exam.',
-  },
-  {
-    t: 'Shop & distributor identity',
-    d: 'Your firm name and contact details on the back cover of every book you sell — the cheapest advertising in the stationery trade.',
-  },
-  {
-    t: 'Bill & duplicate books',
-    d: 'Firm name, GSTIN, terms and serial numbering printed and padded to your format in carbonless NCR.',
-  },
-  {
-    t: 'Inner page printing',
-    d: 'Timetables, syllabus pages, school rules, maps and calendars bound into the front or back of the book.',
-  },
-];
-
-const FINISHES = [
-  { t: 'Gloss lamination', d: 'Bright, wipe-clean and the most popular for school books.' },
-  { t: 'Matt lamination', d: 'Softer, premium feel — used for diaries and corporate gifting.' },
-  { t: 'UV spot highlight', d: 'Raised gloss over a logo or title on an otherwise matt cover.' },
-  { t: 'Rounded corners', d: 'Keeps covers from dog-earing in a schoolbag through the year.' },
-];
-
-/** Who orders custom and bulk books — after Prime Paper's "Here's how we can help" row. */
-const SEGMENTS = [
-  { icon: <Book />, t: 'Schools & colleges', d: 'Class-wise notebooks, practical and scrap books, answer sheets and board supplements with your institution name.' },
-  { icon: <Shield />, t: 'Corporates & offices', d: 'Registers, diaries and notebooks carrying your logo — for staff, conferences and client gifting.' },
-  { icon: <Tag />, t: 'Private label & traders', d: 'Your own brand on our books — cover artwork, title and back-panel details printed under your name.' },
-  { icon: <Palette />, t: 'Parties, events & campaigns', d: 'Symbol, slogan and sponsor branding on covers, produced fast when campaign timelines are tight.' },
-  { icon: <Factory />, t: 'NGOs & social causes', d: 'Affordable books in bulk for distribution drives, with your organisation’s name on the cover.' },
-  { icon: <Truck />, t: 'Shops & distributors', d: 'Firm name and contact on the back cover of every book you sell — advertising that travels home with the customer.' },
-];
-
-/** What a customer can change on a custom run — Prime lists brand, paper, binding and size. */
-const CUSTOM_FIELDS = ['Cover name & logo', 'Paper GSM & page count', 'Binding (stitched / spiral / case)', 'Book size', 'Inner page printing', 'Custom packing'];
-const ORG_TYPES = ['School / college', 'Corporate / office', 'Private label / trader', 'Party / event / campaign', 'NGO / social cause', 'Shop / distributor', 'Other'];
+/** Cover palette per buyer card: schools, corporates, private label, parties, NGOs, shops. */
+const SEGMENT_THEMES = ['green', 'slate', 'plum', 'saffron', 'emerald', 'crimson'];
 
 export default function Customisation() {
-  const [theme, setTheme] = useState(THEMES[0]);
-  const [form, setForm] = useState({ name: '', phone: '', city: '', org: '', product: '', qty: '', by: '', message: '' });
-  const [customise, setCustomise] = useState<string[]>(['Cover name & logo']);
+  const { CUSTOM_COPY: T, CUSTOM_ADVANTAGES, CUSTOM_FIELDS, CUSTOM_SEGMENTS, CUSTOM_THEMES, ORG_TYPES } = useContent();
+  const [theme, setTheme] = useState(CUSTOM_THEMES[0]);
+  const [form, setForm] = useState({ name: '', phone: '', city: '', org: '', cover: '', size: '', ruling: '', pages: '', qty: '', mrp: '', by: '', message: '' });
+  const [files, setFiles] = useState<string[]>([]);
+  const [customise, setCustomise] = useState<string[]>(() => [CUSTOM_FIELDS[0]]);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
   const toggleCustom = (c: string) => setCustomise((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
@@ -84,235 +35,123 @@ export default function Customisation() {
       `Phone: ${form.phone}`,
       form.city && `City: ${form.city}`,
       form.org && `Organisation: ${form.org}`,
-      form.product && `Product: ${form.product}`,
+      form.cover && `Name on cover: ${form.cover}`,
+      `Cover colour: ${theme.label}`,
+      form.size && `Book size: ${form.size}`,
+      form.ruling && `Ruling: ${form.ruling}`,
+      form.pages && `Pages: ${form.pages}`,
       form.qty && `Quantity: ${form.qty}`,
+      form.mrp && `MRP to print: ${form.mrp}`,
       form.by && `Needed by: ${form.by}`,
       customise.length > 0 && `Customise: ${customise.join(', ')}`,
+      files.length > 0 && `Design files (attaching in this chat): ${files.join(', ')}`,
       form.message && '',
       form.message && form.message,
     ].filter(Boolean);
     window.open(`${BUSINESS.whatsapp}?text=${encodeURIComponent(lines.join('\n'))}`, '_blank');
   };
 
-  // Preview product: a long book wearing the selected cover palette
+  // Hero pair: our standard book beside the same book carrying a customer's name.
   const base = bySlug('long-note-book');
-  // Drop the photograph so the generated cover — and the chosen palette —
-  // is what actually renders.
-  const preview: Product = { ...base, art: theme.art, photo: undefined, photoBack: undefined };
+  const stock = artFor(PRICE_ITEMS.find((i) => i.id === 'premium-a4')!);
+  const custom: Product = { ...base, slug: 'custom-cover-sample', art: theme.art, photo: undefined, photoBack: undefined };
+  // The form's live preview: the chosen colour, the name typed for the cover and the size / pages picked.
+  const preview: Product = { ...custom, slug: 'custom-cover-preview' };
+  const previewLabel = {
+    title: form.cover.trim() || T.hero.sampleTitle,
+    sub: [form.size, form.pages].filter(Boolean).join(' · ') || T.hero.sampleSub,
+  };
 
   return (
     <>
-      <PageHead
-        eyebrow="Customisation"
-        title="Your brand, printed on every cover"
-        lede="Front cover customisation and exam-paper printing are done in-house — artwork setup, digital proof, print and binding all under one roof, with no third-party press in the middle."
-      />
+      {/* Hero: our book next to the same book with the buyer's name on it */}
+      <section className="chero">
+        <div className="container chero-in">
+          <div className="chero-copy">
+            <span className="eyebrow intro" style={{ '--d': '60ms' } as React.CSSProperties}>{T.head.eyebrow}</span>
+            <h1 className="intro" style={{ '--d': '140ms' } as React.CSSProperties}>{T.head.title}</h1>
+            <p className="lede intro" style={{ '--d': '230ms' } as React.CSSProperties}>{T.head.lede}</p>
+            <div className="hero-btns intro" style={{ '--d': '320ms' } as React.CSSProperties}>
+              <a href="#bulk-enquiry" className="btn btn--primary">{T.segments.cta} <ArrowRight /></a>
+              <a href={`${BUSINESS.whatsapp}?text=${encodeURIComponent(T.themes.whatsappMessage)}`} target="_blank" rel="noreferrer" className="btn chero-wa">
+                <Whatsapp size={17} /> {T.themes.logoCta}
+              </a>
+            </div>
+          </div>
+
+          <div className="chero-art" aria-hidden="true">
+            <figure className="chero-book chero-book--ours">
+              <figcaption className="chero-tag">
+                {T.hero.ours}
+                <svg viewBox="0 0 60 50" className="chero-arrow"><path d="M8 6c18 2 34 12 38 34" /><path d="M38 34l8 7 4-10" /></svg>
+              </figcaption>
+              <NotebookArt product={stock} height="clamp(220px, 26vw, 330px)" eager />
+            </figure>
+            <figure className="chero-book chero-book--yours" key={theme.id}>
+              <figcaption className="chero-tag">
+                {T.hero.yours}
+                <svg viewBox="0 0 60 50" className="chero-arrow"><path d="M52 6C34 8 18 18 14 40" /><path d="M22 34l-8 7-4-10" /></svg>
+              </figcaption>
+              <NotebookArt product={custom} height="clamp(240px, 29vw, 360px)" label={{ title: T.hero.sampleTitle, sub: T.hero.sampleSub }} eager />
+            </figure>
+            <span className="chero-shelf" />
+          </div>
+        </div>
+      </section>
 
       {/* Who we make custom books for */}
       <section className="section section--tight">
         <div className="container">
           <div className="head head--center">
-            <Reveal><span className="eyebrow">Here’s how we can help</span></Reveal>
-            <Reveal delay={90}><h2>Custom and bulk books for every kind of buyer</h2></Reveal>
+            <Reveal><span className="eyebrow">{T.segments.eyebrow}</span></Reveal>
+            <Reveal delay={90}><h2>{T.segments.title}</h2></Reveal>
           </div>
           <div className="segments">
-            {SEGMENTS.map((sg, i) => (
-              <Reveal key={sg.t} delay={(i % 3) * 80}>
-                <article className="segment">
-                  <span className="pillar-ico">{sg.icon}</span>
-                  <div>
-                    <h3>{sg.t}</h3>
+            {CUSTOM_SEGMENTS.map((sg, i) => {
+              // Each buyer gets its own cover colour, taken from the theme palettes further down the page.
+              const art = CUSTOM_THEMES.find((t) => t.id === SEGMENT_THEMES[i % SEGMENT_THEMES.length])!.art;
+              return (
+                <Reveal key={sg.t} delay={(i % 3) * 80}>
+                  <article className="segment" style={{ '--seg': art.cover, '--seg-band': art.band, '--seg-accent': art.accent } as React.CSSProperties}>
+                    <span className="segment-spine" aria-hidden="true" />
+                    <div className="segment-plate">
+                      <span className="segment-ico"><Icon name={sg.icon} /></span>
+                      <h3>{sg.t}</h3>
+                    </div>
                     <p>{sg.d}</p>
-                  </div>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-          <Reveal delay={120}>
-            <div className="center" style={{ marginTop: 30 }}>
-              <a href="#bulk-enquiry" className="btn btn--primary">Send your requirement <ArrowRight /></a>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* Live cover preview */}
-      <section className="section section--paper">
-        <div className="container split">
-          <Reveal anim="left" className="split-art">
-            <div className="preview-stage">
-              <div className="preview-book" key={theme.id}>
-                <NotebookArt product={preview} height={360} />
-              </div>
-              <span className="preview-note">Illustrative preview — your artwork replaces this</span>
-            </div>
-          </Reveal>
-
-          <div className="split-copy">
-            <Reveal>
-              <span className="eyebrow">Cover themes</span>
-            </Reveal>
-            <Reveal delay={80}>
-              <h2>Pick a direction, we will set the artwork</h2>
-            </Reveal>
-            <Reveal delay={140}>
-              <p className="lede">
-                Send a logo and a rough idea — our team lays out the cover, sends you a digital
-                proof, and nothing goes to print until you approve it. Tap a palette to see how the
-                same book changes character.
-              </p>
-            </Reveal>
-
-            <Reveal delay={200}>
-              <div className="swatches" role="group" aria-label="Cover colour themes">
-                {THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    className={`swatch ${theme.id === t.id ? 'is-active' : ''}`}
-                    onClick={() => setTheme(t)}
-                    aria-pressed={theme.id === t.id}
-                  >
-                    <span
-                      className="swatch-dot"
-                      style={{
-                        background: `linear-gradient(135deg, ${t.art.cover}, ${t.art.band})`,
-                      }}
-                    />
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </Reveal>
-
-            <Reveal delay={260}>
-              <div className="hero-btns">
-                <a
-                  href={`${BUSINESS.whatsapp}?text=${encodeURIComponent(
-                    'Hello Jakharia Books, I would like to discuss customised notebook covers.',
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn--wa"
-                >
-                  <Whatsapp size={17} /> Send us your logo
-                </a>
-                <Link to="/contact" className="btn btn--ghost">
-                  Request a proof <ArrowRight />
-                </Link>
-              </div>
-            </Reveal>
+                  </article>
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* What we can customise */}
-      <section className="section">
-        <div className="container">
-          <div className="head">
-            <Reveal>
-              <span className="eyebrow">What we can print</span>
-            </Reveal>
-            <Reveal delay={90}>
-              <h2>Six ways to make the book yours</h2>
-            </Reveal>
-          </div>
-
-          <div className="grid-3">
-            {OPTIONS.map((o, i) => (
-              <Reveal key={o.t} delay={i * 80}>
-                <article className="opt">
-                  <span className="opt-plus">
-                    <Plus size={18} />
-                  </span>
-                  <h3>{o.t}</h3>
-                  <p>{o.d}</p>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Finishes */}
-      <section className="section section--wash">
+      {/* Real custom jobs: the cover, and the book in use */}
+      <section className="section section--tight section--paper">
         <div className="container">
           <div className="head head--center">
-            <Reveal>
-              <span className="eyebrow">Finishing</span>
-            </Reveal>
-            <Reveal delay={90}>
-              <h2>Details that decide the shelf</h2>
-            </Reveal>
+            <Reveal><span className="eyebrow">{T.made.eyebrow}</span></Reveal>
+            <Reveal delay={90}><h2>{T.made.title}</h2></Reveal>
           </div>
-
-          <div className="grid-4">
-            {FINISHES.map((f, i) => (
-              <Reveal key={f.t} delay={i * 90} anim="pop">
-                <article className="finish">
-                  <h3>{f.t}</h3>
-                  <p>{f.d}</p>
-                </article>
-              </Reveal>
-            ))}
+          <div className="made-grid">
+            {T.made.items.map((m, i) => {
+              const photos = folderPhotos(MADE_FOLDERS[i]);
+              const front = photos.find((p) => p.shot === 'front');
+              const inUse = photos.find((p) => p.shot === 'lifestyle');
+              return (
+                <Reveal key={m.name} delay={i * 90}>
+                  <figure className="made-card">
+                    <div className="made-shots">
+                      {front && <img src={front.src} alt={m.name} loading="lazy" />}
+                      {inUse && <img src={inUse.thumb} alt="" loading="lazy" />}
+                    </div>
+                    <figcaption><strong>{m.name}</strong><span>{m.place}</span></figcaption>
+                  </figure>
+                </Reveal>
+              );
+            })}
           </div>
-        </div>
-      </section>
-
-      {/* Artwork requirements */}
-      <section className="section section--paper">
-        <div className="container split split--reverse">
-          <div className="split-copy">
-            <Reveal>
-              <span className="eyebrow">Artwork</span>
-            </Reveal>
-            <Reveal delay={90}>
-              <h2>What to send us</h2>
-            </Reveal>
-            <Reveal delay={150}>
-              <p className="lede">
-                Do not worry about print-ready files. If all you have is a logo from a signboard,
-                send it — our design team rebuilds it at print resolution.
-              </p>
-            </Reveal>
-            <Reveal delay={210}>
-              <ul className="ticklist">
-                {[
-                  'Logo in any format — CDR, AI, PDF, PNG or even a clear photo',
-                  'Exact name, address and academic year as it should appear',
-                  'Class or subject list if covers differ per class',
-                  'A sample of last year’s book, if you have one, for reference',
-                ].map((t) => (
-                  <li key={t}>
-                    <Check size={17} /> {t}
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-            <Reveal delay={280}>
-              <a href="#bulk-enquiry" className="btn btn--primary">
-                Start a customised order <ArrowRight />
-              </a>
-            </Reveal>
-          </div>
-
-          <Reveal anim="right" className="split-art">
-            <div className="timeline">
-              {[
-                { t: 'Day 1', d: 'Requirement received, rate shared' },
-                { t: 'Day 2–3', d: 'Artwork set, digital proof sent' },
-                { t: 'On approval', d: 'Plates made, printing begins' },
-                { t: 'Dispatch', d: 'Bound, packed and shipped to date' },
-              ].map((s, i) => (
-                <div className="tl-row" key={s.t} style={{ '--d': `${i * 110}ms` } as React.CSSProperties}>
-                  <span className="tl-dot" />
-                  <div>
-                    <strong>{s.t}</strong>
-                    <p>{s.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
         </div>
       </section>
 
@@ -320,39 +159,78 @@ export default function Customisation() {
       <section className="section bulk" id="bulk-enquiry">
         <div className="container contact-grid">
           <Reveal anim="left">
-            <form className="cform" onSubmit={submit}>
+            <form className="cform cform--cover" onSubmit={submit}>
               <div>
-                <span className="eyebrow">Custom / bulk enquiry</span>
-                <h2 className="bulk-title">Tell us what you need</h2>
-                <p className="cform-note">We reply with a rate, MOQ and a proof timeline — usually the same working day.</p>
+                <span className="eyebrow">{T.form.eyebrow}</span>
+                <h2 className="bulk-title">{T.form.title}</h2>
+                <p className="cform-note">{T.form.note}</p>
               </div>
               <div className="frow">
-                <label className="field"><span>Your name *</span><input required value={form.name} onChange={set('name')} autoComplete="name" /></label>
-                <label className="field"><span>Phone *</span><input required type="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" /></label>
+                <label className="field"><span>{T.form.name}</span><input required value={form.name} onChange={set('name')} autoComplete="name" /></label>
+                <label className="field"><span>{T.form.phone}</span><input required type="tel" value={form.phone} onChange={set('phone')} autoComplete="tel" /></label>
               </div>
               <div className="frow">
-                <label className="field"><span>City *</span><input required value={form.city} onChange={set('city')} autoComplete="address-level2" /></label>
+                <label className="field"><span>{T.form.city}</span><input required value={form.city} onChange={set('city')} autoComplete="address-level2" /></label>
                 <label className="field">
-                  <span>You are a</span>
+                  <span>{T.form.org}</span>
                   <select value={form.org} onChange={set('org')}>
-                    <option value="">Select…</option>
+                    <option value="">{T.form.select}</option>
                     {ORG_TYPES.map((o) => <option key={o}>{o}</option>)}
                   </select>
                 </label>
               </div>
               <div className="frow">
+                <label className="field"><span>{T.form.coverText}</span><input value={form.cover} onChange={set('cover')} placeholder={T.form.coverTextPlaceholder} maxLength={28} /></label>
+                <div className="field">
+                  <span>{T.form.colour} · <b>{theme.label}</b></span>
+                  <div className="cover-swatches" role="radiogroup" aria-label={T.form.colour}>
+                    {CUSTOM_THEMES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={theme.id === t.id}
+                        aria-label={t.label}
+                        title={t.label}
+                        className={theme.id === t.id ? 'is-active' : ''}
+                        style={{ background: t.art.cover }}
+                        onClick={() => setTheme(t)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="frow">
                 <label className="field">
-                  <span>Product</span>
-                  <select value={form.product} onChange={set('product')}>
-                    <option value="">Select…</option>
-                    {PRICE_CATEGORIES.map((c) => <option key={c.id}>{c.label}</option>)}
-                    <option>Not sure yet</option>
+                  <span>{T.form.size}</span>
+                  <select value={form.size} onChange={set('size')}>
+                    <option value="">{T.form.select}</option>
+                    {T.form.sizes.map((o) => <option key={o}>{o}</option>)}
+                    <option>{T.form.notSure}</option>
                   </select>
                 </label>
-                <label className="field"><span>Approx. quantity</span><input value={form.qty} onChange={set('qty')} placeholder="e.g. 5,000 books" /></label>
+                <label className="field">
+                  <span>{T.form.ruling}</span>
+                  <select value={form.ruling} onChange={set('ruling')}>
+                    <option value="">{T.form.select}</option>
+                    {T.form.rulings.map((o) => <option key={o}>{o}</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="frow">
+                <label className="field"><span>{T.form.pages}</span><input inputMode="numeric" value={form.pages} onChange={set('pages')} placeholder={T.form.pagesPlaceholder} /></label>
+                <label className="field">
+                  <span>{T.form.qty}</span>
+                  <input value={form.qty} onChange={set('qty')} placeholder={T.form.qtyPlaceholder} />
+                  <small className="field-note">{T.form.qtyNote}</small>
+                </label>
+              </div>
+              <div className="frow">
+                <label className="field"><span>{T.form.mrp}</span><input inputMode="decimal" value={form.mrp} onChange={set('mrp')} placeholder={T.form.mrpPlaceholder} /></label>
+                <label className="field"><span>{T.form.by}</span><input type="date" value={form.by} onChange={set('by')} /></label>
               </div>
               <fieldset className="bulk-options">
-                <legend>What should we customise?</legend>
+                <legend>{T.form.customise}</legend>
                 {CUSTOM_FIELDS.map((c) => (
                   <label key={c} className={`bulk-option ${customise.includes(c) ? 'is-on' : ''}`}>
                     <input type="checkbox" checked={customise.includes(c)} onChange={() => toggleCustom(c)} />
@@ -360,29 +238,41 @@ export default function Customisation() {
                   </label>
                 ))}
               </fieldset>
-              <label className="field"><span>Needed by</span><input type="date" value={form.by} onChange={set('by')} /></label>
-              <label className="field"><span>Requirement details</span><textarea rows={4} value={form.message} onChange={set('message')} placeholder="Sizes, page counts, ruling, artwork you have, delivery city…" /></label>
-              <button type="submit" className="btn btn--primary btn--block"><Whatsapp size={17} /> Send requirement on WhatsApp</button>
-              <p className="cform-alt">Prefer to talk? Call <a href={BUSINESS.phoneHref}>{BUSINESS.phone}</a></p>
+              <div className="field">
+                <span>{T.form.design}</span>
+                {/* The file input covers the whole box, so a click or a drop lands on it. */}
+                <label className={`dropzone ${files.length ? 'has-files' : ''}`}>
+                  <input type="file" multiple accept=".png,.jpg,.jpeg,.pdf,.cdr,.ai,.svg" onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 10).map((f) => f.name))} />
+                  <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" /></svg>
+                  <strong>{files.length ? files.join(', ') : T.form.designDrop}</strong>
+                  <small>{T.form.designHint}</small>
+                </label>
+                {files.length > 0 && <small className="field-note">{T.form.designNote}</small>}
+              </div>
+              <label className="field"><span>{T.form.details}</span><textarea rows={4} value={form.message} onChange={set('message')} placeholder={T.form.detailsPlaceholder} /></label>
+              <button type="submit" className="btn btn--primary btn--block"><Whatsapp size={17} /> {T.form.submit}</button>
+              <p className="cform-alt">{T.form.callPrompt} <a href={BUSINESS.phoneHref}>{BUSINESS.phone}</a></p>
             </form>
           </Reveal>
 
-          <div className="cside">
+          <div className="cside cside--sticky">
             <Reveal anim="right">
-              <div className="ccard">
-                <h3>The Jakharia advantage</h3>
-                <ul className="ticklist">
-                  {['Mill-direct rates on every custom run', 'Ruling, printing and binding in our own unit', 'Digital proof before anything is printed', 'Artwork kept on file for next season’s re-order'].map((t) => (
-                    <li key={t}><Check size={17} /> {t}</li>
-                  ))}
-                </ul>
+              <div className="ccard cpreview">
+                <h3>{T.form.previewTitle}</h3>
+                <div className="cpreview-book" key={theme.id}>
+                  <NotebookArt product={preview} height={300} label={previewLabel} />
+                </div>
+                <span className="preview-note">{T.themes.previewNote}</span>
               </div>
             </Reveal>
             <Reveal anim="right" delay={90}>
               <div className="ccard">
-                <h3>Want standard books instead?</h3>
-                <p>Every stock line is in the shop with live wholesale rates.</p>
-                <Link to="/products" className="tlink">Shop all products <ArrowRight size={16} /></Link>
+                <h3>{T.side.advantageTitle}</h3>
+                <ul className="ticklist">
+                  {CUSTOM_ADVANTAGES.map((t) => (
+                    <li key={t}><Check size={17} /> {t}</li>
+                  ))}
+                </ul>
               </div>
             </Reveal>
           </div>

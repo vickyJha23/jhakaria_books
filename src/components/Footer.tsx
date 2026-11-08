@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom';
 import { BUSINESS, CATEGORIES } from '../data/site';
 import { Phone, Mail, Pin, Whatsapp, ArrowRight } from './Icons';
 import Logo from './Logo';
+import { useContent } from '../i18n/context';
 
 export default function Footer() {
+  const { FOOTER_COPY: T } = useContent();
   return (
     <footer className="ftr">
       <div className="container">
@@ -12,46 +14,38 @@ export default function Footer() {
             <Link to="/" className="brand brand--ftr">
               <Logo />
               <span className="brand-txt">
-                <strong>Jakharia Books</strong>
-                <small>Book Mfg. Co. · Vapi</small>
+                <strong>{BUSINESS.name}</strong>
+                <small>{T.brandSub}</small>
               </span>
             </Link>
-            <p className="ftr-blurb">
-              Notebook and paper-stationery manufacturers in Vapi, Gujarat — supplying
-              distributors, wholesalers, schools and tuition centres across India with
-              customised books at mill-direct prices.
-            </p>
+            <p className="ftr-blurb">{T.blurb}</p>
             <Link to="/catalogue" className="btn btn--wa btn--sm">
-              <Whatsapp size={16} /> Browse the full catalogue
+              <Whatsapp size={16} /> {T.catalogueCta}
             </Link>
           </div>
 
-          <nav className="ftr-col" aria-label="Products">
-            <h4>Products</h4>
+          <nav className="ftr-col" aria-label={T.productsTitle}>
+            <h4>{T.productsTitle}</h4>
             {CATEGORIES.filter((c) => c.id !== 'all').map((c) => (
               <Link key={c.id} to={`/products?c=${c.id}`}>
-                {c.label}
+                {T.ranges[c.id as keyof typeof T.ranges]}
               </Link>
             ))}
-            <Link to="/products">Full range</Link>
-            <Link to="/catalogue">Catalogue (PDF)</Link>
+            {T.productsExtra.map((l) => <Link key={l.to} to={l.to}>{l.label}</Link>)}
           </nav>
 
-          <nav className="ftr-col" aria-label="Company">
-            <h4>Company</h4>
-            <Link to="/about">About us</Link>
-            <Link to="/customisation">Customisation</Link>
-            <Link to="/about#quality">Quality &amp; paper</Link>
-            <Link to="/contact">Become a distributor</Link>
+          <nav className="ftr-col" aria-label={T.companyTitle}>
+            <h4>{T.companyTitle}</h4>
+            {T.companyLinks.map((l) => <Link key={l.to} to={l.to}>{l.label}</Link>)}
           </nav>
 
           <div className="ftr-col">
-            <h4>Get in touch</h4>
+            <h4>{T.contactTitle}</h4>
             <a href={BUSINESS.phoneHref} className="ftr-ct">
               <Phone size={16} /> {BUSINESS.phone}
             </a>
             <a href={BUSINESS.whatsapp} target="_blank" rel="noreferrer" className="ftr-ct">
-              <Whatsapp size={16} /> Chat on WhatsApp
+              <Whatsapp size={16} /> {T.whatsapp}
             </a>
             <a href={`mailto:${BUSINESS.email}`} className="ftr-ct">
               <Mail size={16} /> {BUSINESS.email}
@@ -63,25 +57,23 @@ export default function Footer() {
         </div>
 
         <div className="ftr-band">
-          <p>
-            Minimum order quantities apply. Bulk slabs and distributor pricing shared on request.
-          </p>
+          <p>{T.band}</p>
           <Link to="/contact" className="tlink">
-            Request a price list <ArrowRight size={16} />
+            {T.bandCta} <ArrowRight size={16} />
           </Link>
         </div>
 
         <div className="ftr-base">
           <span>
-            © {new Date().getFullYear()} {BUSINESS.legalName}. All rights reserved.
+            © {new Date().getFullYear()} {BUSINESS.legalName}. {T.rights}
           </span>
-          <span>Est. {BUSINESS.established} · Made in Vapi, Gujarat 🇮🇳</span>
+          <span>{T.made}</span>
           <button
             type="button"
             className="ftr-top-btn"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            Back to top ↑
+            {T.backToTop}
           </button>
         </div>
       </div>

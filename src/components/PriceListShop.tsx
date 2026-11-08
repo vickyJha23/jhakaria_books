@@ -3,10 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom';
 import NotebookArt from './NotebookArt';
 import { currency, useOrder } from '../order/context';
 import { PRICE_CATEGORIES, PRICE_ITEMS, priceCategoryLabel, type PriceItem, type PriceVariant } from '../data/priceList';
+import type { Content } from '../data/content';
+import { useContent } from '../i18n/context';
 import {
-  PAGE_BUCKETS, PRICE_BUCKETS, SHOP_GROUPS, UNIT_LABEL,
-  artFor, brandOf, categoryArt, coversOf, defaultPack, gsmOf, minMrp, mrpPer, mrpText, packsFor, pagesOf,
-  type CategoryId, type PackId,
+  PAGE_BUCKETS, PRICE_BUCKETS, SHOP_GROUPS,
+  artFor, brandOf, categoryArt, coversOf, defaultPack, gsmOf, minMrp, mrpPer, mrpText, packsFor, pagesOf, rangeIndex, subjectsFor,
+  type CategoryId, type PackId, type Subject,
 } from '../data/shop';
 import { Close } from './Icons';
 
@@ -26,17 +28,8 @@ const LEGACY_CATEGORY: Record<string, string> = { long: 'long', jumbo: 'jumbo', 
 const GRID_PAGE_SIZE = 12;
 const TABLE_PAGE_SIZE = 10;
 
-const SORTS = [
-  { id: 'list', label: 'Price-list order' },
-  { id: 'mrp-asc', label: 'MRP: low to high' },
-  { id: 'mrp-desc', label: 'MRP: high to low' },
-  { id: 'pages-desc', label: 'Most pages' },
-  { id: 'name', label: 'Name A–Z' },
-] as const;
-
-const FACET_TITLE: Record<Facet, string> = {
-  range: 'Category', brand: 'Brand', gsm: 'Paper', pages: 'Page count', price: 'Printed MRP', cover: 'Cover finish', unit: 'Sold as',
-};
+/** Sort ids; their labels come from SHOP_COPY.sorts. */
+const SORTS = ['range', 'list', 'mrp-asc', 'mrp-desc', 'pages-desc', 'name'] as const;
 
 const productValues = (item: PriceItem): Partial<Record<Facet, string>> => ({
   range: item.category, brand: brandOf(item), gsm: gsmOf(item), unit: item.unit,
@@ -90,23 +83,27 @@ function facetCounts(f: Filters, facet: Facet): Record<string, number> {
 
 const BRAND_OPTIONS = [...new Set(PRICE_ITEMS.map(brandOf))];
 const GSM_OPTIONS = [...new Set(PRICE_ITEMS.map(gsmOf))].sort((a, b) => (a === 'Standard' ? -1 : b === 'Standard' ? 1 : parseInt(a) - parseInt(b)));
-const COVER_OPTIONS = ['Brown', 'Picture', 'UV + drip-off', 'Coloured board'];
+const COVER_OPTIONS = ['Brown', 'Picture', 'UV + drip-off', 'Coloured board'] as const;
 
-function facetOptions(facet: Facet): { id: string; label: string }[] {
+function facetOptions(facet: Facet, C: Content): { id: string; label: string }[] {
+  const T = C.SHOP_COPY;
   switch (facet) {
-    case 'range': return PRICE_CATEGORIES.map((c) => ({ id: c.id, label: c.label }));
-    case 'brand': return BRAND_OPTIONS.map((b) => ({ id: b, label: b === 'Jakharia' ? 'Jakharia (unbranded)' : b }));
-    case 'gsm': return GSM_OPTIONS.map((g) => ({ id: g, label: g === 'Standard' ? 'Standard paper' : g }));
-    case 'pages': return PAGE_BUCKETS.map((b) => ({ id: b.id, label: b.label }));
-    case 'price': return PRICE_BUCKETS.map((b) => ({ id: b.id, label: b.label }));
-    case 'cover': return COVER_OPTIONS.map((c) => ({ id: c, label: c }));
-    case 'unit': return (['book', 'packet', 'register'] as const).map((u) => ({ id: u, label: UNIT_LABEL[u] }));
+    case 'range': return PRICE_CATEGORIES.map((c) => ({ id: c.id, label: C.CATEGORY_LABELS[c.id] }));
+    case 'brand': return BRAND_OPTIONS.map((b) => ({ id: b, label: b === 'Jakharia' ? T.unbranded : b }));
+    case 'gsm': return GSM_OPTIONS.map((g) => ({ id: g, label: g === 'Standard' ? T.standardPaper : g }));
+    case 'pages': return PAGE_BUCKETS.map((b) => ({ id: b.id, label: T.pageBuckets[b.id] }));
+    case 'price': return PRICE_BUCKETS.map((b) => ({ id: b.id, label: T.priceBuckets[b.id] }));
+    case 'cover': return COVER_OPTIONS.map((c) => ({ id: c, label: T.covers[c] }));
+    case 'unit': return (['book', 'packet', 'register'] as const).map((u) => ({ id: u, label: T.units[u] }));
   }
 }
 
 /* ---------------- Shop ---------------- */
 
 export default function PriceListShop() {
+  const C = useContent();
+  const { SHOP_COPY: T, CATEGORY_LABELS, GROUP_LABELS } = C;
+  const label = (id: string) => CATEGORY_LABELS[id as CategoryId];
   const [params, setParams] = useSearchParams();
 
   const filters: Filters = useMemo(() => {
@@ -119,7 +116,7 @@ export default function PriceListShop() {
       brand: list('brand'), gsm: list('gsm'), pages: list('pages'), price: list('price'), cover: list('cover'), unit: list('unit'),
     };
   }, [params]);
-  const sort = params.get('sort') ?? 'list';
+  const sort = params.get('sort') ?? 'range';
   const view = params.get('view') === 'table' ? 'table' : 'grid';
 
   /** Writes one URL param, so every filtered view is shareable and survives refresh. */
@@ -139,6 +136,12 @@ export default function PriceListShop() {
   const clearAll = () => setParams(new URLSearchParams(view === 'table' ? { view } : {}), { replace: true, preventScrollReset: true });
 
   const [query, setQuery] = useState(filters.q);
+  // A search started from the header changes ?q= while the shop is open; show it in the box.
+  const [seenQ, setSeenQ] = useState(filters.q);
+  if (filters.q !== seenQ) {
+    setSeenQ(filters.q);
+    if (filters.q !== query.trim()) setQuery(filters.q);
+  }
   useEffect(() => {
     if (query === filters.q) return;
     const timer = window.setTimeout(() => update('q', query.trim() || null), 250);
@@ -155,6 +158,7 @@ export default function PriceListShop() {
     const lowMrp = (r: (typeof rows)[number]) => Math.min(Infinity, ...r.variants.flatMap((v) => (v.mrp === undefined ? [] : [v.mrp])));
     const maxPages = (r: (typeof rows)[number]) => Math.max(0, ...r.variants.map((v) => pagesOf(v) ?? 0));
     const sorted = [...rows];
+    if (sort === 'range') sorted.sort((a, b) => rangeIndex(a.item) - rangeIndex(b.item));
     if (sort === 'mrp-asc') sorted.sort((a, b) => lowMrp(a) - lowMrp(b));
     if (sort === 'mrp-desc') sorted.sort((a, b) => (Number.isFinite(lowMrp(b)) ? lowMrp(b) : -1) - (Number.isFinite(lowMrp(a)) ? lowMrp(a) : -1));
     if (sort === 'pages-desc') sorted.sort((a, b) => maxPages(b) - maxPages(a));
@@ -187,7 +191,7 @@ export default function PriceListShop() {
     [filters],
   );
   const activeChips = FACETS.flatMap((facet) => filters[facet].map((id) => ({
-    facet, id, label: facetOptions(facet).find((o) => o.id === id)?.label ?? id,
+    facet, id, label: facetOptions(facet, C).find((o) => o.id === id)?.label ?? id,
   })));
   const activeCount = activeChips.length + (filters.q ? 1 : 0);
 
@@ -214,35 +218,30 @@ export default function PriceListShop() {
 
   return (
     <div className="shop" id="price-list">
+      {/* ----- Category groups and search on one row ----- */}
       <div className="shop-heading">
-        <div>
-          <span className="eyebrow">Product range · MRPs as printed</span>
-          <h2>Shop by category</h2>
-          <p className="lede">{PRICE_ITEMS.length} product lines across {PRICE_CATEGORIES.length} categories. Filter by size, pages and MRP, then send your list on WhatsApp for wholesale rates. <Link to="/catalogue" className="tlink">Prefer a printable catalogue?</Link></p>
+        <div className="shop-groups" role="tablist" aria-label={T.groupsAria}>
+          {[{ id: 'all' as const }, ...SHOP_GROUPS].map((g) => (
+            <button key={g.id} type="button" role="tab" aria-selected={group === g.id} className={`shop-group ${group === g.id ? 'is-active' : ''}`} onClick={() => setGroup(g.id)}>
+              {GROUP_LABELS[g.id]}
+            </button>
+          ))}
         </div>
         <label className="shop-search">
-          <span className="sr-only">Search the price list</span>
+          <span className="sr-only">{T.searchLabel}</span>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search e.g. A4 172, register, 70 GSM" />
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={T.searchPlaceholder} />
         </label>
       </div>
 
-      {/* ----- Category strip ----- */}
-      <div className="shop-groups" role="tablist" aria-label="Category groups">
-        {[{ id: 'all', label: 'All categories' }, ...SHOP_GROUPS].map((g) => (
-          <button key={g.id} type="button" role="tab" aria-selected={group === g.id} className={`shop-group ${group === g.id ? 'is-active' : ''}`} onClick={() => setGroup(g.id)}>
-            {g.label}
-          </button>
-        ))}
-      </div>
       <div className="shop-cats">
         {stripCategories.map((id) => {
           const active = filters.range.length === 1 && filters.range[0] === id;
           return (
             <button key={id} type="button" className={`shop-cat ${active ? 'is-active' : ''}`} aria-pressed={active} onClick={() => update('range', active ? null : id)}>
               <span className="shop-cat-art"><NotebookArt product={categoryArt(id as CategoryId)} height={86} /></span>
-              <strong>{priceCategoryLabel(id)}</strong>
-              <small>{categoryTotal(id)} lines{categoryFrom(id) !== undefined && ` · MRP from ${currency(categoryFrom(id)!)}`}</small>
+              <strong>{label(id)}</strong>
+              <small>{T.catLines(categoryTotal(id))}{categoryFrom(id) !== undefined && ` · ${T.mrpFrom} ${currency(categoryFrom(id)!)}`}</small>
             </button>
           );
         })}
@@ -250,30 +249,30 @@ export default function PriceListShop() {
 
       <div className="shop-body">
         {/* ----- Filters ----- */}
-        {filtersOpen && <button type="button" className="shop-scrim" aria-label="Close filters" onClick={() => setFiltersOpen(false)} />}
-        <aside className={`shop-filters ${filtersOpen ? 'is-open' : ''}`} aria-label="Filters">
-          {/* The panel stretches to the results' height; this inner column stays in view while scrolling. */}
+        {filtersOpen && <button type="button" className="shop-scrim" aria-label={T.closeFilters} onClick={() => setFiltersOpen(false)} />}
+        <aside className={`shop-filters ${filtersOpen ? 'is-open' : ''}`} aria-label={T.filters}>
+          {/* Only Category starts open (and any facet already in use), so the panel stays short; it sticks while the list scrolls. */}
           <div className="shop-filters-inner">
             <div className="shop-filters-head">
-              <strong>Filters {activeCount > 0 && <span>{activeCount}</span>}</strong>
-              {activeCount > 0 && <button type="button" className="shop-clear" onClick={clearAll}>Clear all</button>}
-              <button type="button" className="shop-filters-close" onClick={() => setFiltersOpen(false)} aria-label="Close filters"><Close size={18} /></button>
+              <strong>{T.filters} {activeCount > 0 && <span>{activeCount}</span>}</strong>
+              {activeCount > 0 && <button type="button" className="shop-clear" onClick={clearAll}>{T.clearAll}</button>}
+              <button type="button" className="shop-filters-close" onClick={() => setFiltersOpen(false)} aria-label={T.closeFilters}><Close size={18} /></button>
             </div>
 
             {FACETS.map((facet) => (
-              <details key={facet} className="facet" open={facet !== 'unit' || filters.unit.length > 0}>
-                <summary>{FACET_TITLE[facet]}{filters[facet].length > 0 && <span className="facet-n">{filters[facet].length}</span>}</summary>
+              <details key={facet} className="facet" open={facet === 'range' || filters[facet].length > 0}>
+                <summary>{T.facets[facet]}{filters[facet].length > 0 && <span className="facet-n">{filters[facet].length}</span>}</summary>
                 <div className={`facet-options ${facet === 'range' ? 'facet-options--scroll' : ''}`}>
                   {facet === 'range'
                     ? SHOP_GROUPS.map((g) => (
                         <div key={g.id} className="facet-group">
-                          <span className="facet-group-label">{g.label}</span>
+                          <span className="facet-group-label">{GROUP_LABELS[g.id]}</span>
                           {g.categories.map((id) => (
-                            <FacetOption key={id} checked={filters.range.includes(id)} count={counts.range[id] ?? 0} label={priceCategoryLabel(id)} onChange={() => toggle('range', id)} />
+                            <FacetOption key={id} checked={filters.range.includes(id)} count={counts.range[id] ?? 0} label={label(id)} onChange={() => toggle('range', id)} />
                           ))}
                         </div>
                       ))
-                    : facetOptions(facet).map((o) => (
+                    : facetOptions(facet, C).map((o) => (
                         <FacetOption key={o.id} checked={filters[facet].includes(o.id)} count={counts[facet][o.id] ?? 0} label={o.label} onChange={() => toggle(facet, o.id)} />
                       ))}
                 </div>
@@ -281,7 +280,7 @@ export default function PriceListShop() {
             ))}
 
             <button type="button" className="btn btn--primary btn--block shop-filters-apply" onClick={() => setFiltersOpen(false)}>
-              Show {results.length} product{results.length === 1 ? '' : 's'}
+              {T.showResults(results.length)}
             </button>
           </div>
         </aside>
@@ -291,27 +290,27 @@ export default function PriceListShop() {
           <div className="shop-toolbar">
             <button type="button" className="shop-filter-btn" onClick={() => setFiltersOpen(true)}>
               <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-              Filters {activeCount > 0 && <span>{activeCount}</span>}
+              {T.filters} {activeCount > 0 && <span>{activeCount}</span>}
             </button>
             <p className="shop-count">
               {results.length > pageSize
-                ? <>Showing <strong>{firstShown}–{lastShown}</strong> of {results.length} product lines</>
-                : <><strong>{results.length}</strong> of {PRICE_ITEMS.length} product lines</>}
+                ? T.showing(firstShown, lastShown, results.length)
+                : T.countOf(results.length, PRICE_ITEMS.length)}
             </p>
             <label className="shop-sort">
-              <span>Sort</span>
-              <select value={sort} onChange={(e) => update('sort', e.target.value === 'list' ? null : e.target.value)}>
-                {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              <span>{T.sort}</span>
+              <select value={sort} onChange={(e) => update('sort', e.target.value === 'range' ? null : e.target.value)}>
+                {SORTS.map((id) => <option key={id} value={id}>{T.sorts[id]}</option>)}
               </select>
             </label>
-            <div className="shop-view" role="group" aria-label="View">
-              <button type="button" aria-pressed={view === 'grid'} onClick={() => update('view', null)} title="Card view">
+            <div className="shop-view" role="group" aria-label={T.viewAria}>
+              <button type="button" aria-pressed={view === 'grid'} onClick={() => update('view', null)} title={T.cardView}>
                 <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>
-                <span className="sr-only">Card view</span>
+                <span className="sr-only">{T.cardView}</span>
               </button>
-              <button type="button" aria-pressed={view === 'table'} onClick={() => update('view', 'table')} title="Price-list view">
+              <button type="button" aria-pressed={view === 'table'} onClick={() => update('view', 'table')} title={T.tableView}>
                 <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                <span className="sr-only">Price-list view</span>
+                <span className="sr-only">{T.tableView}</span>
               </button>
             </div>
           </div>
@@ -320,11 +319,11 @@ export default function PriceListShop() {
             <div className="shop-chips">
               {filters.q && <button type="button" className="shop-chip" onClick={() => { setQuery(''); update('q', null); }}>“{filters.q}” <span aria-hidden="true">×</span></button>}
               {activeChips.map((chip) => (
-                <button key={`${chip.facet}:${chip.id}`} type="button" className="shop-chip" onClick={() => toggle(chip.facet, chip.id)} aria-label={`Remove filter ${chip.label}`}>
+                <button key={`${chip.facet}:${chip.id}`} type="button" className="shop-chip" onClick={() => toggle(chip.facet, chip.id)} aria-label={T.removeFilter(chip.label)}>
                   {chip.label} <span aria-hidden="true">×</span>
                 </button>
               ))}
-              <button type="button" className="shop-clear" onClick={() => { setQuery(''); clearAll(); }}>Clear all</button>
+              <button type="button" className="shop-clear" onClick={() => { setQuery(''); clearAll(); }}>{T.clearAll}</button>
             </div>
           )}
 
@@ -332,9 +331,9 @@ export default function PriceListShop() {
           <div className="shop-results" ref={resultsRef}>
             {results.length === 0 ? (
               <div className="shop-empty">
-                <strong>No product lines match these filters.</strong>
-                <p>Try removing a filter, or ask us — we may make it to order.</p>
-                <button type="button" className="btn btn--ghost btn--sm" onClick={() => { setQuery(''); clearAll(); }}>Clear all filters</button>
+                <strong>{T.emptyTitle}</strong>
+                <p>{T.emptyBody}</p>
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => { setQuery(''); clearAll(); }}>{T.clearAllFilters}</button>
               </div>
             ) : view === 'grid' ? (
               <div className="shop-grid">
@@ -362,23 +361,24 @@ function pageList(page: number, total: number): (number | 'gap')[] {
 }
 
 function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (page: number) => void }) {
+  const { SHOP_COPY: T } = useContent();
   return (
-    <nav className="pager" aria-label="Product pages">
+    <nav className="pager" aria-label={T.pagerAria}>
       <button type="button" className="pager-step" disabled={page === 1} onClick={() => onChange(page - 1)}>
-        <span aria-hidden="true">←</span> Previous
+        <span aria-hidden="true">←</span> {T.prev}
       </button>
       <div className="pager-pages">
         {pageList(page, total).map((n, i) => n === 'gap'
           ? <span key={`gap-${i}`} className="pager-gap" aria-hidden="true">…</span>
           : (
-            <button key={n} type="button" className={`pager-num ${n === page ? 'is-active' : ''}`} aria-current={n === page ? 'page' : undefined} aria-label={`Page ${n}`} onClick={() => onChange(n)}>
+            <button key={n} type="button" className={`pager-num ${n === page ? 'is-active' : ''}`} aria-current={n === page ? 'page' : undefined} aria-label={T.page(n)} onClick={() => onChange(n)}>
               {n}
             </button>
           ))}
       </div>
-      <span className="pager-of">Page {page} of {total}</span>
+      <span className="pager-of">{T.pageOf(page, total)}</span>
       <button type="button" className="pager-step" disabled={page === total} onClick={() => onChange(page + 1)}>
-        Next <span aria-hidden="true">→</span>
+        {T.next} <span aria-hidden="true">→</span>
       </button>
     </nav>
   );
@@ -394,22 +394,25 @@ function FacetOption({ checked, count, label, onChange }: { checked: boolean; co
   );
 }
 
-type AddFn = (item: PriceItem, variant: PriceVariant, pack: PackId, quantity?: number) => void;
+type AddFn = (item: PriceItem, variant: PriceVariant, pack: PackId, quantity?: number, subject?: Subject) => void;
 
 /**
  * Shop card: kept to what a buyer scans — cover, name, printed MRP and one add
  * button. Pack choice and every option live on the product page.
  */
 function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: PriceVariant[]; onAdd: AddFn }) {
+  const { SHOP_COPY: T, UNIT_COPY: U, CATEGORY_LABELS, SUBJECT_LABELS } = useContent();
+  const subjects = subjectsFor(item);
+  const [subject, setSubject] = useState<Subject | undefined>(subjects[0]);
   const [variantId, setVariantId] = useState(variants[0].id);
   const variant = variants.find((v) => v.id === variantId) ?? variants[0];
-  const pack = packsFor(item, variant).find((p) => p.id === defaultPack(variant))!;
+  const pack = packsFor(item, variant, U).find((p) => p.id === defaultPack(variant))!;
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const gsm = gsmOf(item);
   const href = `/products/${item.id}`;
-  const unit = item.unit === 'packet' ? 'packet' : item.unit === 'register' ? 'register' : 'pc';
-  const packWord = pack.id === 'dozen' ? 'doz' : unit;
+  const unit = item.unit === 'packet' ? U.pkt : item.unit === 'register' ? U.register.toLowerCase() : U.pc;
+  const packWord = pack.id === 'dozen' ? U.doz : unit;
 
   useEffect(() => {
     if (!added) return;
@@ -419,19 +422,28 @@ function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: Pri
 
   return (
     <article className="ptile">
-      <Link to={href} className="ptile-art" aria-label={`View ${item.name}`}>
+      <Link to={href} className="ptile-art" aria-label={T.view(item.name)}>
         <NotebookArt product={artFor(item)} height={180} />
       </Link>
 
       <div className="ptile-body">
-        <span className="ptile-cat">{brandOf(item)} · {priceCategoryLabel(item.category).replace(/ Books?$/, '')}{gsm !== 'Standard' && ` · ${gsm}`}</span>
+        <span className="ptile-cat">{brandOf(item)} · {CATEGORY_LABELS[item.category as CategoryId].replace(/ Books?$/, '')}{gsm !== 'Standard' && ` · ${gsm}`}</span>
         <h3><Link to={href}>{item.name.replace(/ · \d+ GSM/i, '')}</Link></h3>
 
-        {variants.length > 1 && (
-          <div className="ptile-variants" role="radiogroup" aria-label={`${item.name} options`}>
-            {variants.map((v) => (
-              <button key={v.id} type="button" role="radio" aria-checked={v.id === variant.id} className={`ptile-variant ${v.id === variant.id ? 'is-active' : ''}`} onClick={() => setVariantId(v.id)} title={v.option}>
-                {pagesOf(v) ?? v.option.split(' · ')[0]}
+        {/* Always shown, even for a single option, so every card's price and button line up. */}
+        <div className="ptile-variants" role="radiogroup" aria-label={T.options(item.name)}>
+          {variants.map((v) => (
+            <button key={v.id} type="button" role="radio" aria-checked={v.id === variant.id} className={`ptile-variant ${v.id === variant.id ? 'is-active' : ''}`} onClick={() => setVariantId(v.id)} title={v.option}>
+              {pagesOf(v) ?? v.option.split(' · ')[0]}
+            </button>
+          ))}
+        </div>
+
+        {subjects.length > 0 && (
+          <div className="ptile-subjects" role="radiogroup" aria-label={T.subject}>
+            {subjects.map((sj) => (
+              <button key={sj} type="button" role="radio" aria-checked={subject === sj} className={subject === sj ? 'is-active' : ''} onClick={() => setSubject(sj)}>
+                {SUBJECT_LABELS[sj]}
               </button>
             ))}
           </div>
@@ -439,23 +451,23 @@ function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: Pri
 
         <div className="ptile-price">
           {variant.mrp !== undefined
-            ? <><small>MRP</small><strong>{currency(variant.mrp)}</strong>{mrpPer(item) && <small>/ {mrpPer(item)}</small>}</>
-            : <span className="ptile-ask">MRP on request</span>}
+            ? <><small>{T.mrp}</small><strong>{currency(variant.mrp)}</strong>{mrpPer(item) && <small>/ {mrpPer(item)}</small>}</>
+            : <span className="ptile-ask">{T.mrpOnRequest}</span>}
         </div>
         <p className="ptile-meta">
-          {pagesOf(variant) === undefined || variants.length === 1 ? `${variant.option} · ` : ''}
+          {pagesOf(variant) === undefined ? `${variant.option} · ` : ''}
           {variant.size}
-          {variant.bundle !== undefined && ` · ${variant.bundle} ${variant.dozenRate !== undefined ? 'doz' : item.unit === 'packet' ? 'pkts' : 'pcs'} bundle`}
+          {variant.bundle !== undefined && ` · ${T.bundleOf(variant.bundle, variant.dozenRate !== undefined ? U.doz : item.unit === 'packet' ? U.pkts : U.pcs)}`}
         </p>
 
         <div className="ptile-cta">
           <div className="ptile-qty">
-            <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">−</button>
-            <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} aria-label={`Quantity in ${pack.label.toLowerCase()}`} />
-            <button type="button" onClick={() => setQuantity((q) => q + 1)} aria-label="Increase quantity">+</button>
+            <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label={T.decrease}>−</button>
+            <input type="number" min={1} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.floor(Number(e.target.value) || 1)))} aria-label={`${T.quantity} (${pack.label})`} />
+            <button type="button" onClick={() => setQuantity((q) => q + 1)} aria-label={T.increase}>+</button>
           </div>
-          <button type="button" className={`ptile-add ${added ? 'is-added' : ''}`} onClick={() => { onAdd(item, variant, pack.id, quantity); setAdded(true); }}>
-            {added ? 'Added ✓' : `Add ${packWord}`}
+          <button type="button" className={`ptile-add ${added ? 'is-added' : ''}`} onClick={() => { onAdd(item, variant, pack.id, quantity, subject); setAdded(true); }}>
+            {added ? T.added : T.add(packWord)}
           </button>
         </div>
       </div>
@@ -464,18 +476,20 @@ function ProductTile({ item, variants, onAdd }: { item: PriceItem; variants: Pri
 }
 
 function PriceTable({ rows, onAdd }: { rows: { item: PriceItem; variants: PriceVariant[] }[]; onAdd: AddFn }) {
+  const { SHOP_COPY: T, UNIT_COPY: U, CATEGORY_LABELS } = useContent();
+  const t = T.table;
   return (
     <div className="ptable-wrap">
       <table className="ptable">
         <thead>
           <tr>
-            <th scope="col">Product</th>
-            <th scope="col">Option</th>
-            <th scope="col">Cover</th>
-            <th scope="col" className="num">MRP</th>
-            <th scope="col" className="num">Bundle</th>
-            <th scope="col">Size</th>
-            <th scope="col"><span className="sr-only">Add</span></th>
+            <th scope="col">{t.product}</th>
+            <th scope="col">{t.option}</th>
+            <th scope="col">{t.cover}</th>
+            <th scope="col" className="num">{t.mrp}</th>
+            <th scope="col" className="num">{t.bundle}</th>
+            <th scope="col">{t.size}</th>
+            <th scope="col"><span className="sr-only">{t.add}</span></th>
           </tr>
         </thead>
         {rows.map(({ item, variants }) => (
@@ -485,17 +499,17 @@ function PriceTable({ rows, onAdd }: { rows: { item: PriceItem; variants: PriceV
                 {i === 0 && (
                   <th scope="rowgroup" rowSpan={variants.length} className="ptable-name">
                     <Link to={`/products/${item.id}`}>{item.name}</Link>
-                    <small>{priceCategoryLabel(item.category)}</small>
+                    <small>{CATEGORY_LABELS[item.category as CategoryId]}</small>
                   </th>
                 )}
                 <td>{v.option}</td>
                 <td>{v.colour ?? '—'}</td>
-                <td className="num"><strong>{v.mrp !== undefined ? mrpText(item, v).replace('MRP ', '') : 'On request'}</strong></td>
+                <td className="num"><strong>{v.mrp !== undefined ? mrpText(item, v).replace('MRP ', '') : T.onRequest}</strong></td>
                 <td className="num">{v.bundle ?? '—'}</td>
                 <td className="ptable-size">{v.size ?? '—'}</td>
                 <td>
-                  <button type="button" className="ptable-add" onClick={() => onAdd(item, v, defaultPack(v))} aria-label={`Add one ${v.dozenRate !== undefined ? 'dozen' : item.unit} of ${item.name}, ${v.option}`}>
-                    + {v.dozenRate !== undefined ? 'Doz' : item.unit === 'packet' ? 'Pkt' : 'Pc'}
+                  <button type="button" className="ptable-add" onClick={() => onAdd(item, v, defaultPack(v))} aria-label={`${T.add(v.dozenRate !== undefined ? U.doz : item.unit === 'packet' ? U.pkt : U.pc)}: ${item.name}, ${v.option}`}>
+                    + {v.dozenRate !== undefined ? U.doz : item.unit === 'packet' ? U.pkt : U.pc}
                   </button>
                 </td>
               </tr>

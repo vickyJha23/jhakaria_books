@@ -14,6 +14,8 @@ interface Props {
   pages: StoryPage[];
   /** The scrolling section that drives the book (0 → 1 as it is read). */
   trackRef: React.RefObject<HTMLElement | null>;
+  /** Screen-reader description of the animation. */
+  label: string;
 }
 
 function supportsWebGL(): boolean {
@@ -67,13 +69,13 @@ function pageTexture(page: StoryPage | null): THREE.CanvasTexture {
   ruledPage(ctx);
   if (page) {
     ctx.fillStyle = 'rgba(242, 159, 0, .9)';
-    ctx.font = '700 120px Fraunces, Georgia, serif';
+    ctx.font = '700 120px Fraunces, "Noto Serif Devanagari", "Noto Serif Gujarati", Georgia, serif';
     ctx.fillText(page.no, 140, 132);
     ctx.fillStyle = '#28256a';
-    ctx.font = 'italic 600 58px Fraunces, Georgia, serif';
+    ctx.font = 'italic 600 58px Fraunces, "Noto Serif Devanagari", "Noto Serif Gujarati", Georgia, serif';
     wrap(ctx, page.title, 140, 236, TEX_W - 190, 92);
     ctx.fillStyle = '#3b3a5c';
-    ctx.font = 'italic 400 34px Fraunces, Georgia, serif';
+    ctx.font = 'italic 400 34px Fraunces, "Noto Serif Devanagari", "Noto Serif Gujarati", Georgia, serif';
     wrap(ctx, page.note, 140, 420, TEX_W - 190, 46);
     // A small hand-drawn tick, like a teacher's mark
     ctx.strokeStyle = 'rgba(193, 39, 45, .8)';
@@ -97,10 +99,10 @@ function insideCoverTexture(): THREE.CanvasTexture {
   ctx.strokeRect(48, 48, TEX_W - 96, TEX_H - 96);
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f29f00';
-  ctx.font = '700 64px Fraunces, Georgia, serif';
+  ctx.font = '700 64px Fraunces, "Noto Serif Devanagari", "Noto Serif Gujarati", Georgia, serif';
   ctx.fillText('Jakharia Books', TEX_W / 2, 430);
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'italic 400 42px Fraunces, Georgia, serif';
+  ctx.font = 'italic 400 42px Fraunces, "Noto Serif Devanagari", "Noto Serif Gujarati", Georgia, serif';
   ctx.fillText('Quality Speaks Itself', TEX_W / 2, 510);
   ctx.fillStyle = 'rgba(255,255,255,.55)';
   ctx.font = '600 26px "Plus Jakarta Sans", Arial, sans-serif';
@@ -117,7 +119,7 @@ function insideCoverTexture(): THREE.CanvasTexture {
  * "Our story" section is scrolled — one page per chapter. Falls back to a
  * flat cover where WebGL is unavailable.
  */
-export default function AboutNotebook3D({ pages, trackRef }: Props) {
+export default function AboutNotebook3D({ pages, trackRef, label }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(() => !supportsWebGL());
   const coverProduct = bySlug('a4-exercise-book');
@@ -135,7 +137,7 @@ export default function AboutNotebook3D({ pages, trackRef }: Props) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -308,7 +310,7 @@ export default function AboutNotebook3D({ pages, trackRef }: Props) {
   }, [failed, pages, trackRef, coverProduct.photo]);
 
   return (
-    <div className={`nb3d ${failed ? 'is-fallback' : ''}`} ref={host} role="img" aria-label="A Jakharia notebook opening page by page as the story is read">
+    <div className={`nb3d ${failed ? 'is-fallback' : ''}`} ref={host} role="img" aria-label={label}>
       {failed && <NotebookArt product={coverProduct} height="min(360px, 60vw)" />}
     </div>
   );

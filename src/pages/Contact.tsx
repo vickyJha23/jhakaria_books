@@ -2,35 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageHead from '../components/PageHead';
 import Reveal from '../components/Reveal';
-import { BUSINESS, PRODUCTS, bySlug } from '../data/site';
+import { BUSINESS, PRODUCTS } from '../data/site';
 import { Phone, Mail, Pin, Whatsapp, ArrowRight, Check } from '../components/Icons';
-
-const FAQS = [
-  {
-    q: 'What is the minimum order quantity?',
-    a: 'MOQ depends on the product and whether covers are customised. Standard-cover books start at carton quantities; customised covers need a larger run because plates are made per design. Tell us your sizes and we will give you the exact MOQ for that job.',
-  },
-  {
-    q: 'How do bulk discounts work?',
-    a: 'Pricing is slab-wise on the total order, not per line item. That means you can mix A4, A5, long books and registers in one order and still reach the next slab. Rates are shared in writing against your specific requirement.',
-  },
-  {
-    q: 'How long does a customised cover order take?',
-    a: 'Artwork and a digital proof typically go out within two to three working days of receiving your logo and details. Production time after approval depends on quantity and the season — we commit to a date only once the line can hold it.',
-  },
-  {
-    q: 'Do you supply outside Gujarat?',
-    a: 'Yes. We supply distributors and wholesalers across India. Transport is arranged to your preferred transporter, and cartons are shrink-wrapped and strapped for long-haul transit.',
-  },
-  {
-    q: 'Can I get samples before ordering?',
-    a: 'Please do. Ask for samples in the sizes and page counts you sell most, so you can compare the paper directly against what you currently stock.',
-  },
-];
+import { useContent } from '../i18n/context';
 
 const PRODUCT_NAMES = PRODUCTS.map((p) => p.name);
 
 export default function Contact() {
+  const { CONTACT_COPY: T, CONTACT_AUDIENCES, CONTACT_NEXT_STEPS, FAQS } = useContent();
   const [open, setOpen] = useState<number | null>(0);
   const [form, setForm] = useState({
     name: '',
@@ -72,24 +51,20 @@ export default function Contact() {
   return (
     <>
       <PageHead
-        eyebrow="Get in touch"
-        title="Become a Jakharia distributor"
-        lede="Tell us what you sell and how much of it. We will come back with a slab-wise rate, MOQ and a realistic dispatch date — usually the same day."
+        eyebrow={T.head.eyebrow}
+        title={T.head.title}
+        lede={T.head.lede}
       />
 
-      <section className="section section--tight partner-audience" style={{ '--partner-image': `url(${bySlug('long-premium-book')?.photo ?? ''})` } as React.CSSProperties}>
+      <section className="section section--tight partner-audience">
         <div className="container">
           <div className="head head--center">
-            <span className="eyebrow">Who we work with</span>
-            <h2>A direct manufacturing partner for your business</h2>
-            <p className="lede">Tell us how you serve your market so we can shape the right product mix and quote.</p>
+            <span className="eyebrow">{T.audiences.eyebrow}</span>
+            <h2>{T.audiences.title}</h2>
+            <p className="lede">{T.audiences.lede}</p>
           </div>
           <div className="partner-audience-grid">
-            {[
-              ['Retailers', 'Build a dependable shelf range for your local customers.'],
-              ['Wholesalers', 'Source multiple paper stationery lines from one manufacturer.'],
-              ['Distributors', 'Discuss territory, seasonal demand and a suitable product mix.'],
-            ].map(([title, body], i) => (
+            {CONTACT_AUDIENCES.map(({ title, body }, i) => (
               <article className="partner-audience-card" key={title}>
                 <span>0{i + 1}</span><h3>{title}</h3><p>{body}</p>
               </article>
@@ -103,26 +78,23 @@ export default function Contact() {
           {/* Form */}
           <Reveal anim="left">
             <form className="cform" onSubmit={submit}>
-              <h2>Send an enquiry</h2>
-              <p className="cform-note">
-                Fields marked * are required. Submitting opens WhatsApp with your details filled
-                in, ready to send.
-              </p>
+              <h2>{T.form.title}</h2>
+              <p className="cform-note">{T.form.note}</p>
 
               <div className="frow">
                 <label className="field">
-                  <span>Your name *</span>
-                  <input required value={form.name} onChange={set('name')} placeholder="Full name" />
+                  <span>{T.form.name}</span>
+                  <input required value={form.name} onChange={set('name')} placeholder={T.form.namePlaceholder} />
                 </label>
                 <label className="field">
-                  <span>Firm / shop name</span>
-                  <input value={form.firm} onChange={set('firm')} placeholder="Business name" />
+                  <span>{T.form.firm}</span>
+                  <input value={form.firm} onChange={set('firm')} placeholder={T.form.firmPlaceholder} />
                 </label>
               </div>
 
               <div className="frow">
                 <label className="field">
-                  <span>Phone *</span>
+                  <span>{T.form.phone}</span>
                   <input
                     required
                     type="tel"
@@ -130,64 +102,60 @@ export default function Contact() {
                     pattern="[0-9+\s-]{10,15}"
                     value={form.phone}
                     onChange={set('phone')}
-                    placeholder="10-digit mobile"
+                    placeholder={T.form.phonePlaceholder}
                   />
                 </label>
                 <label className="field">
-                  <span>Business type</span>
+                  <span>{T.form.businessType}</span>
                   <select value={form.businessType} onChange={set('businessType')}>
-                    <option value="">Select your business</option>
-                    <option>Retailer</option>
-                    <option>Wholesaler</option>
-                    <option>Distributor</option>
-                    <option>School / institution</option>
-                    <option>Other</option>
+                    <option value="">{T.form.businessTypeSelect}</option>
+                    {T.form.businessTypes.map((b) => <option key={b}>{b}</option>)}
                   </select>
                 </label>
               </div>
 
               <div className="frow">
                 <label className="field">
-                  <span>City</span>
-                  <input value={form.city} onChange={set('city')} placeholder="City / district" />
+                  <span>{T.form.city}</span>
+                  <input value={form.city} onChange={set('city')} placeholder={T.form.cityPlaceholder} />
                 </label>
               </div>
 
               <div className="frow">
                 <label className="field">
-                  <span>Product of interest</span>
+                  <span>{T.form.product}</span>
                   <select value={form.product} onChange={set('product')}>
-                    <option value="">Select a product line</option>
+                    <option value="">{T.form.productSelect}</option>
                     {PRODUCT_NAMES.map((n) => (
                       <option key={n} value={n}>
                         {n}
                       </option>
                     ))}
-                    <option value="Multiple / full range">Multiple / full range</option>
+                    <option value={T.form.productAll}>{T.form.productAll}</option>
                   </select>
                 </label>
                 <label className="field">
-                  <span>Approx. quantity</span>
-                  <input value={form.qty} onChange={set('qty')} placeholder="e.g. 5,000 books" />
+                  <span>{T.form.qty}</span>
+                  <input value={form.qty} onChange={set('qty')} placeholder={T.form.qtyPlaceholder} />
                 </label>
               </div>
 
               <label className="field">
-                <span>Anything else we should know?</span>
+                <span>{T.form.message}</span>
                 <textarea
                   rows={4}
                   value={form.message}
                   onChange={set('message')}
-                  placeholder="Sizes, page counts, cover customisation, delivery timeline…"
+                  placeholder={T.form.messagePlaceholder}
                 />
               </label>
 
               <button type="submit" className="btn btn--wa btn--block">
-                <Whatsapp size={17} /> Send enquiry on WhatsApp
+                <Whatsapp size={17} /> {T.form.submit}
               </button>
 
               <p className="cform-alt">
-                Prefer to talk? Call{' '}
+                {T.form.callPrompt}{' '}
                 <a href={BUSINESS.phoneHref} className="tlink">
                   {BUSINESS.phone}
                 </a>
@@ -199,14 +167,14 @@ export default function Contact() {
           <div className="cside">
             <Reveal anim="right">
               <div className="ccard">
-                <h3>Reach us directly</h3>
+                <h3>{T.direct.title}</h3>
                 <a href={BUSINESS.phoneHref} className="crow">
                   <span className="crow-ico">
                     <Phone size={18} />
                   </span>
                   <span>
                     <strong>{BUSINESS.phone}</strong>
-                    <small>Mon–Sat, 10 am – 7 pm IST</small>
+                    <small>{T.direct.phoneNote}</small>
                   </span>
                 </a>
                 <a href={BUSINESS.whatsapp} target="_blank" rel="noreferrer" className="crow">
@@ -214,8 +182,8 @@ export default function Contact() {
                     <Whatsapp size={18} />
                   </span>
                   <span>
-                    <strong>WhatsApp</strong>
-                    <small>Fastest for quotes and samples</small>
+                    <strong>{T.direct.whatsapp}</strong>
+                    <small>{T.direct.whatsappNote}</small>
                   </span>
                 </a>
                 <a href={`mailto:${BUSINESS.email}`} className="crow">
@@ -224,7 +192,7 @@ export default function Contact() {
                   </span>
                   <span>
                     <strong>{BUSINESS.email}</strong>
-                    <small>For purchase orders</small>
+                    <small>{T.direct.emailNote}</small>
                   </span>
                 </a>
                 <span className="crow">
@@ -235,7 +203,7 @@ export default function Contact() {
                     <strong>
                       {BUSINESS.city}, {BUSINESS.state}
                     </strong>
-                    <small>Manufacturing unit — visits by appointment</small>
+                    <small>{T.direct.addressNote}</small>
                   </span>
                 </span>
               </div>
@@ -243,27 +211,19 @@ export default function Contact() {
 
             <Reveal anim="right" delay={120}>
               <div className="ccard ccard--wa">
-                <h3>See the full range first</h3>
-                <p>
-                  Browse every product, size and printed MRP in our catalogue — then send us the
-                  items you want wholesale rates for.
-                </p>
+                <h3>{T.catalogue.title}</h3>
+                <p>{T.catalogue.body}</p>
                 <Link to="/catalogue" className="btn btn--wa btn--block">
-                  Open catalogue <ArrowRight size={16} />
+                  {T.catalogue.cta} <ArrowRight size={16} />
                 </Link>
               </div>
             </Reveal>
 
             <Reveal anim="right" delay={200}>
               <div className="ccard ccard--soft">
-                <h3>What happens next</h3>
+                <h3>{T.nextTitle}</h3>
                 <ul className="ticklist ticklist--sm">
-                  {[
-                    'We confirm your requirement on call or WhatsApp',
-                    'Slab-wise rate and MOQ shared in writing',
-                    'Samples couriered if you want to compare paper',
-                    'Order confirmed, dispatch date committed',
-                  ].map((t) => (
+                  {CONTACT_NEXT_STEPS.map((t) => (
                     <li key={t}>
                       <Check size={16} /> {t}
                     </li>
@@ -280,10 +240,10 @@ export default function Contact() {
         <div className="container faq-wrap">
           <div className="head head--center">
             <Reveal>
-              <span className="eyebrow">Questions</span>
+              <span className="eyebrow">{T.faq.eyebrow}</span>
             </Reveal>
             <Reveal delay={90}>
-              <h2>Before you enquire</h2>
+              <h2>{T.faq.title}</h2>
             </Reveal>
           </div>
 
@@ -310,7 +270,7 @@ export default function Contact() {
           <Reveal delay={160}>
             <p className="center" style={{ marginTop: 34 }}>
               <a href={BUSINESS.whatsapp} target="_blank" rel="noreferrer" className="tlink">
-                Still unsure? Ask us on WhatsApp <ArrowRight size={16} />
+                {T.faq.cta} <ArrowRight size={16} />
               </a>
             </p>
           </Reveal>

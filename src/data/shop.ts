@@ -5,6 +5,13 @@
 
 import { PRICE_CATEGORIES, PRICE_ITEMS, type PriceItem, type PriceVariant } from './priceList';
 import { bySlug, type Product } from './site';
+import { CONTENT_EN, type Content } from './content';
+import { folderPhotos, type Photo } from './gallery';
+import pAThreeCartridgeFront from '../assets/products/a3-cartridge-front.webp';
+import pAThreeCartridgeBack from '../assets/products/a3-cartridge-back.webp';
+import pScrapFront from '../assets/products/scrap-front.webp';
+import pScrapBack from '../assets/products/scrap-back.webp';
+import pScrapInside from '../assets/products/scrap-inside.webp';
 
 export type CategoryId = (typeof PRICE_CATEGORIES)[number]['id'];
 
@@ -51,16 +58,120 @@ const ITEM_PHOTO: Record<string, string> = {
   'aclass-a3-cartridge': 'a3-cartridge-drawing-book',
 };
 
+/**
+ * Studio photographs taken for the price-list lines themselves: front cover,
+ * optional back cover, and extra shots (inside pages, other cover designs).
+ * These take priority over the older site.ts product photos.
+ */
+const ITEM_PHOTOS: Record<string, { front: string; back?: string; more?: string[] }> = {
+  'aclass-a3-cartridge': { front: pAThreeCartridgeFront, back: pAThreeCartridgeBack },
+  'aclass-scrap': { front: pScrapFront, back: pScrapBack, more: [pScrapInside] },
+};
+
+/** Studio photo folders (src/assets/catalog) per price-list line; the first folder is the lead design. */
+const ITEM_FOLDERS: Record<string, string[]> = {
+  'aclass-register': ['29-a-class-deluxe-long-ex-book-4qr'],
+  'big-pocket-book': ['19-a-class-pocket-book'],
+  'small-pocket-book': ['20-a-class-pocket-note-book'],
+  'classic-note-patti': ['21-classic-note-book'],
+  'classic-drawing-paper': ['23-a-class-a4-tk-draw-sheet'],
+  'aclass-a4-spiral': ['01-a-class-a4-spiral-book-motocross', '02-a-class-a4-spiral-book-friends'],
+  'oasis-a4': ['05-oasis-a4-note-book'],
+  'miru-a4': ['09-miru-a4-college-book'],
+  'nice-a4': ['12-nice-a4-notebook'],
+  'aclass-bright-colour-paper': ['28-a-class-a4-bright-color-paper'],
+  'aclass-rang-tarang': ['46-a-class-rang-tarang-tinted-paper-11x15', '47-a-class-rang-tarang-tinted-paper-a4'],
+  'star-jumbo': ['36-star-jumbo-exercise-book'],
+  'classic-jumbo': ['18-classic-jumbo-ex-book'],
+  'aclass-jumbo': ['37-a-class-jumbo-note-book'],
+  'ruchi-rough': ['03-ruchi-rough-book-long'],
+  'classic-real-long': ['04-classic-real-long-ex-book', '31-classic-real-long-ex-book'],
+  'aclass-original-long': ['32-a-class-original-long-book', '35-paris-original-long-book'],
+  'premium-a4': ['10-premium-a4-college-book'],
+  'neo-a4': ['11-neo-a4-college-book'],
+  'classic-a4': ['16-classic-a4-college-ex-book'],
+  'studeo-a4': ['13-studeo-success-a4-exercise-book'],
+  'galaxy-a4': ['15-galaxy-a4-college-book'],
+  'infinity-a4': ['17-infinity-a4-exercise-book'],
+  'aclass-a4': ['14-a-class-a4-ex-note-book', '30-a-class-a4-ex-note-book'],
+  'aclass-a4-practical': ['27-a-class-practical-note-book'],
+  'classic-tk': ['38-classic-3a-drawing-book-red', '39-classic-3a-jumbo-cartridge-drawing-book', '40-classic-4a-jumbo-cartridge-drawing-book'],
+  'aclass-tk': ['42-a-class-3a-jumbo-drawing-book', '43-a-class-drawing-book-4a-green', '44-a-class-4a-jumbo-drawing-book'],
+  'classic-a5': ['33-classic-a5-ex-note-book'],
+  'aclass-a5': ['08-a-class-a5-ex-note-book', '34-a-class-a5-ex-note-book'],
+  'aclass-quarter-graph': ['41-a-class-graph-book'],
+  'choice-answer-sheet': ['45-choice-educational-answer-sheet'],
+  'classic-answer-sheet': ['22-classic-educational-answer-sheet'],
+  'aclass-practical-paper': ['24-a-class-practical-journal-paper'],
+  'maps-graph-paper': ['26-a-class-india-states-political-map'],
+  'aclass-drawing-paper': ['25-a-class-tk-draw-sheet-140gsm'],
+};
+
+/** The price-list line a photo folder belongs to (custom jobs have none). */
+export const itemIdForFolder = (folder: string) => Object.keys(ITEM_FOLDERS).find((id) => ITEM_FOLDERS[id].includes(folder));
+
+/**
+ * A line's place in the range: categories in price-list order, and inside a category the order of
+ * the range boards (the number of its first photo folder); unphotographed lines close their category.
+ */
+export function rangeIndex(item: PriceItem): number {
+  const nums = (ITEM_FOLDERS[item.id] ?? []).map((f) => parseInt(f, 10));
+  const inCategory = nums.length ? Math.min(...nums) : 100 + PRICE_ITEMS.indexOf(item);
+  return PRICE_CATEGORIES.findIndex((c) => c.id === item.category) * 1000 + inCategory;
+}
+
+/** A category's lines in range order. */
+export const rangeOrder = (items: PriceItem[]) => [...items].sort((a, b) => rangeIndex(a) - rangeIndex(b));
+
+/**
+ * Every photo we hold for a line, for the product page gallery: the full studio set of its
+ * first photo folder, then the cover and back of each further cover design.
+ */
+export function photosFor(item: PriceItem): Photo[] {
+  const folders = ITEM_FOLDERS[item.id];
+  if (folders) {
+    const [first, ...designs] = folders;
+    return [...folderPhotos(first), ...designs.flatMap((f) => folderPhotos(f).filter((p) => p.shot === 'front' || p.shot === 'back'))];
+  }
+  const set = ITEM_PHOTOS[item.id];
+  if (!set) return [];
+  const one = (src: string, shot: Photo['shot']): Photo => ({ shot, src, thumb: src, folder: item.id });
+  return [one(set.front, 'front'), ...(set.back ? [one(set.back, 'back')] : []), ...(set.more ?? []).map((src) => one(src, 'front'))];
+}
+
 /** A Product shape NotebookArt can draw: the real photo when we hold one, else generated art. */
 export function artFor(item: PriceItem): Product {
+  const photos = photosFor(item);
+  const { art, binding } = CATEGORY_ART[item.category as CategoryId];
+  if (photos.length) {
+    const back = photos.find((p) => p.shot === 'back' && p.folder === photos[0].folder);
+    return { slug: item.id, name: item.name, category: 'paper', blurb: '', specs: [], pages: '', art, binding, photo: photos[0].thumb, photoBack: back?.thumb };
+  }
   const slug = ITEM_PHOTO[item.id];
   if (slug) return bySlug(slug);
-  const { art, binding } = CATEGORY_ART[item.category as CategoryId];
   return { slug: item.id, name: item.name, category: 'paper', blurb: '', specs: [], pages: '', art, binding };
 }
 
+/** The line whose cover stands for its category on tiles and sliders: the liveliest photographed cover. */
+const CATEGORY_LEAD: Partial<Record<CategoryId, string>> = {
+  a4: 'premium-a4', long: 'classic-real-long', a5: 'aclass-a5', drawing: 'aclass-tk', jumbo: 'classic-jumbo',
+  pocket: 'big-pocket-book', 'paper-items': 'aclass-rang-tarang', 'answer-sheets': 'aclass-practical-paper',
+};
+
+/** How a line is bound: spiral and hard-cover lines say so in their name or option; the rest follow their category. */
+export function bindingOf(item: PriceItem, variant?: PriceVariant): Product['binding'] {
+  const text = `${item.name} ${variant?.option ?? item.variants[0].option}`;
+  if (/spiral/i.test(text)) return 'spiral';
+  if (/hard cover/i.test(text)) return 'case';
+  return CATEGORY_ART[item.category as CategoryId].binding;
+}
+
 export function categoryArt(category: CategoryId): Product {
-  const first = PRICE_ITEMS.find((item) => item.category === category && ITEM_PHOTO[item.id])
+  // The chosen lead, then a studio photograph, then an older site photo, then any line.
+  const lead = PRICE_ITEMS.find((item) => item.id === CATEGORY_LEAD[category]);
+  const first = lead
+    ?? PRICE_ITEMS.find((item) => item.category === category && (ITEM_FOLDERS[item.id] || ITEM_PHOTOS[item.id]))
+    ?? PRICE_ITEMS.find((item) => item.category === category && ITEM_PHOTO[item.id])
     ?? PRICE_ITEMS.find((item) => item.category === category)!;
   return artFor(first);
 }
@@ -84,6 +195,27 @@ export function gsmOf(item: PriceItem): string {
 export function pagesOf(variant: PriceVariant): number | undefined {
   const match = variant.option.match(/(\d+)\s*pages/i);
   return match ? Number(match[1]) : undefined;
+}
+
+/** Jumbo and A5 books are made in a Hindi, English, Maths and Marathi edition; the buyer picks one per order line. */
+export const SUBJECTS = ['hindi', 'english', 'maths', 'marathi'] as const;
+export type Subject = (typeof SUBJECTS)[number];
+export const subjectsFor = (item: PriceItem): readonly Subject[] => (item.category === 'jumbo' || item.category === 'a5' ? SUBJECTS : []);
+
+/** What the inside pages look like, from the category and the option text. */
+export type Ruling = 'ruled' | 'graph' | 'plain' | 'diagram' | 'register';
+
+/** Illustrated views the product page gallery shows for lines we have not photographed (see BookViews). */
+export type BookView = 'cover' | 'inside' | 'back';
+export const BOOK_VIEWS: BookView[] = ['cover', 'inside', 'back'];
+
+export function rulingOf(item: PriceItem, variant: PriceVariant): Ruling {
+  if (item.category === 'graph') return 'graph';
+  if (item.category === 'diagram') return 'diagram';
+  if (item.category === 'registers') return 'register';
+  if (item.category === 'drawing' || item.category === 'drawing-paper' || item.category === 'paper-items') return 'plain';
+  if (/plain/i.test(variant.option) || /plain/i.test(variant.colour ?? '')) return 'plain';
+  return 'ruled';
 }
 
 /** A variant's colour column, folded into the few cover finishes buyers ask for. */
@@ -146,16 +278,17 @@ export interface Pack { id: PackId; label: string; pieces: number }
 /**
  * Books sell by the piece or dozen and bundles are counted in dozens; packets
  * and registers sell singly and bundles are counted in packets / pieces —
- * exactly as the column headings on the printed list.
+ * exactly as the column headings on the printed list. Labels use `words`
+ * (the active language's UNIT_COPY); the WhatsApp order stays in English.
  */
-export function packsFor(item: PriceItem, variant: PriceVariant): Pack[] {
-  const single = item.unit === 'packet' ? 'Packet' : item.unit === 'register' ? 'Register' : 'Piece';
+export function packsFor(item: PriceItem, variant: PriceVariant, words: Content['UNIT_COPY'] = CONTENT_EN.UNIT_COPY): Pack[] {
+  const single = item.unit === 'packet' ? words.packet : item.unit === 'register' ? words.register : words.piece;
   const packs: Pack[] = [{ id: 'piece', label: single, pieces: 1 }];
-  if (variant.dozenRate !== undefined) packs.push({ id: 'dozen', label: 'Dozen', pieces: 12 });
+  if (variant.dozenRate !== undefined) packs.push({ id: 'dozen', label: words.dozen, pieces: 12 });
   if (variant.bundle !== undefined) {
     const pieces = variant.dozenRate !== undefined ? variant.bundle * 12 : variant.bundle;
-    const count = variant.dozenRate !== undefined ? `${variant.bundle} doz` : `${variant.bundle} ${item.unit === 'packet' ? 'pkts' : 'pcs'}`;
-    packs.push({ id: 'bundle', label: `Bundle (${count})`, pieces });
+    const count = variant.dozenRate !== undefined ? `${variant.bundle} ${words.doz}` : `${variant.bundle} ${item.unit === 'packet' ? words.pkts : words.pcs}`;
+    packs.push({ id: 'bundle', label: words.bundle(count), pieces });
   }
   return packs;
 }

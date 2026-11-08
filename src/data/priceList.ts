@@ -2,7 +2,8 @@
 export interface PriceVariant {
   id: string;
   option: string;
-  rate: number;
+  /** Wholesale rate; absent for lines added from the photo labels, whose rate is quoted on request. */
+  rate?: number;
   dozenRate?: number;
   mrp?: number;
   bundle?: number;
@@ -41,7 +42,7 @@ type CategoryId = (typeof PRICE_CATEGORIES)[number]['id'];
 const v = (
   id: string,
   option: string,
-  rate: number,
+  rate: number | undefined,
   dozenRate?: number,
   mrp?: number,
   bundle?: number,
@@ -110,6 +111,18 @@ export const PRICE_ITEMS: PriceItem[] = [
   item('aclass-a4-practical', 'A-Class A4 Practical Book · 70 GSM', 'a4', 'book', [
     v('76', '76 pages', 30.75, 369, 70, 16, '29 × 21.5 cm', 'Picture'), v('172', '172 pages', 52.75, 633, 110, 8, '29 × 21.5 cm', 'Picture'),
   ]),
+  item('aclass-a4-spiral', 'A-Class A4 Spiral Book', 'a4', 'book', [
+    v('172', '172 pages · spiral bound', undefined, undefined, 110, undefined, '29.7 × 21 cm'),
+  ], 'MRP as printed on the label; wholesale rate quoted on request.'),
+  item('oasis-a4', 'Oasis A4 Note Book · Gold', 'a4', 'book', [
+    v('172', '172 pages', undefined, undefined, 95),
+  ], 'MRP as printed on the label; wholesale rate quoted on request.'),
+  item('miru-a4', 'Miru A4 College Book', 'a4', 'book', [
+    v('172', '172 pages', undefined, undefined, 85, undefined, '29 × 20.5 cm'),
+  ], 'MRP as printed on the label; wholesale rate quoted on request.'),
+  item('nice-a4', 'Nice A4 Notebook', 'a4', 'book', [
+    v('172', '172 pages', undefined, undefined, 70, undefined, '29 × 20 cm'),
+  ], 'MRP as printed on the label; wholesale rate quoted on request.'),
   item('classic-tk', 'TK Classic Drawing Book', 'drawing', 'book', [
     v('3a', '3A · 36 pages', 10.75, 129, 30, 48, '24 × 17 cm', 'Red'), v('3a-jumbo', '3A Jumbo · 36 pages', 16, 192, 45, 32, '29.5 × 20.5 cm', 'Yellow'), v('4a', '4A · 36 pages', 21.5, 258, 60, 24, '34 × 24 cm', 'Green'), v('4a-jumbo', '4A Jumbo · 36 pages', 27, 324, 70, 18, '37.5 × 27.5 cm', 'Brown'),
   ]),
@@ -185,6 +198,13 @@ export const PRICE_ITEMS: PriceItem[] = [
   item('full-tk-paper', 'Full TK Paper · 140 GSM · 14.4 KG', 'paper-items', 'packet', [
     v('55x75', '55 × 75 cm · 250 sheets', 1750, undefined, undefined, 3, '55 × 75 cm', undefined, '250 sheets'),
   ], 'Paper item rates are GST inclusive at 18%.'),
+  item('aclass-bright-colour-paper', 'A-Class A4 Bright Colour Paper', 'paper-items', 'packet', [
+    v('a4', 'A4 · both-side colour · 100 sheets', undefined, undefined, 200, undefined, '29.7 × 21 cm', undefined, '100 sheets'),
+  ], 'MRP as printed on the label; wholesale rate quoted on request.'),
+  item('aclass-rang-tarang', 'A-Class Rang Tarang Tinted Colour Paper', 'paper-items', 'packet', [
+    v('11x15', '11 × 15 in · 100 sheets', undefined, undefined, 500, undefined, '38.1 × 27.9 cm', undefined, '100 sheets'),
+    v('a4', 'A4 · 100 sheets', undefined, undefined, 350, undefined, '29.7 × 21 cm', undefined, '100 sheets'),
+  ], 'MRP as printed on the label; wholesale rate quoted on request.'),
   item('aclass-register', 'A-Class C-Ruled Register · 70 GSM', 'registers', 'register', [
     v('1', '1 quire · 72 pages · centre silai', 45, undefined, 90, 144, '34.5 × 21.5 cm'), v('2', '2 quires · 144 pages · centre silai', 88, undefined, 180, 108, '34.5 × 21.5 cm'), v('3', '3 quires · 216 pages · centre silai', 132, undefined, 270, 72, '34.5 × 21.5 cm'), v('4', '4 quires · 288 pages · centre silai', 176, undefined, 360, 54, '34.5 × 21.5 cm'), v('5', '5 quires · 360 pages · centre silai', 220, undefined, 450, 36, '34.5 × 21.5 cm'), v('6', '6 quires · 432 pages · Regzine', 264, undefined, 540, undefined, '34.5 × 21.5 cm'), v('8', '8 quires · 576 pages · Regzine', 352, undefined, 720, undefined, '34.5 × 21.5 cm'), v('10', '10 quires · 720 pages · Regzine', 440, undefined, 900, undefined, '34.5 × 21.5 cm'),
   ], 'C-Ruled register rates are GST inclusive at 18%.'),

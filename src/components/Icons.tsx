@@ -123,3 +123,20 @@ export const Plus = ({ size = 20, className }: P) => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 );
+
+/** Icons that page content (src/data/content.ts) can refer to by name. */
+const NAMED = {
+  whatsapp: Whatsapp,
+  truck: Truck,
+  palette: Palette,
+  tag: Tag,
+  factory: Factory,
+  shield: Shield,
+  book: Book,
+  sparkle: Sparkle,
+} as const;
+
+export type IconName = keyof typeof NAMED;
+
+/** Draws an icon from its content name, e.g. <Icon name="factory" />. */
+export const Icon = ({ name, size }: { name: IconName; size?: number }) => NAMED[name]({ size });

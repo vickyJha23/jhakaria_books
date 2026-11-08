@@ -19,7 +19,7 @@ function readCart(): CartLine[] {
   } catch { return []; }
 }
 
-const sameLine = (a: CartLine, b: CartLine) => a.itemId === b.itemId && a.variantId === b.variantId && a.pack === b.pack;
+const sameLine = (a: CartLine, b: CartLine) => a.itemId === b.itemId && a.variantId === b.variantId && a.pack === b.pack && a.subject === b.subject;
 
 /** Site-wide WhatsApp order list, so the shop and product pages share one cart. */
 export default function OrderProvider({ children }: { children: ReactNode }) {
@@ -40,8 +40,8 @@ export default function OrderProvider({ children }: { children: ReactNode }) {
     return {
       lines,
       totalPieces: lines.reduce((sum, l) => sum + l.pack.pieces * l.line.quantity, 0),
-      add: (item, variant, pack, quantity = 1) => setCart((current) => {
-        const next = { itemId: item.id, variantId: variant.id, pack, quantity };
+      add: (item, variant, pack, quantity = 1, subject) => setCart((current) => {
+        const next: CartLine = { itemId: item.id, variantId: variant.id, pack, quantity, ...(subject ? { subject } : {}) };
         const existing = current.find((l) => sameLine(l, next));
         return existing
           ? current.map((l) => (l === existing ? { ...l, quantity: l.quantity + quantity } : l))
